@@ -38,5 +38,20 @@ def print_error(message):
 def print_warning(message):
     print("[WARNING]", message)
     
+def print_with_condition(condition, message):
+    if condition:
+        print(message)
+        
+def warning_with_condition(condition, message):
+    if condition:
+        print_warning(message)
+        
+def error_with_condition(condition, message):
+    if condition:
+        print_error(message)
+
+def print_separator():
+    print("-"*42)
+    
 def byte_string_to_hex(byte_string):
     return " ".join(["%02X" % x for x in byte_string]).strip()
