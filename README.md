@@ -2,30 +2,32 @@
 
 Tool to display wave file header information and to restore corrupted wave file headers.
 
-This program was originally developed to recover damaged wave files destroyed due to a bug in the audio application _Logic_.
+This program was originally developed to recover damaged wave files which were destroyed due to a bug in the audio application _Logic_. See [this blog post](http://www.davehofmann.de/when-logic-destroys-your-audio-files/) for more details.
 
-# License
+## License
 
 Wave Recovery Tool is licensed under the terms of the GNU General Public License Version 3.
 
-# Author
+## Author
 
 Wave Recovery Tool is developed by David Hofmann &lt;dev@davehofmann.de&gt;
 
-# Prerequisites
+## Prerequisites
 
 To use the wave recovery tool, a [Python 3](https://www.python.org/downloads/) installation is required.
 
+Furthermore, a copy of wave recovery tool needs to be downloaded or cloned with `git` using the green **Clone or download** button on the top right corner of this page. All commands below must be executed in the cloned or downloaded and extracted directory containing the file `waverecovery.py`.
+
 For all commands below, `python3` is assumed to be in the system's executable `PATH`. If your system reports that `python3` can not be found, its containing directory must either be added to the `PATH` variable or `python3` must be replaced with the absolute path to the Python 3 interpreter.
 
-# Usage
+## Usage
 
 The tool provides two functionalities:
 
 1. Displaying wave file header information
 2. Restoring corrupted wave file headers
 
-## Displaying Header File Information
+### Displaying Header File Information
 
 To display header information for a specific wave file, invoke the tool as follows:
 
@@ -58,7 +60,7 @@ Data Subchunk Size: 3425301
 [WARNING] Data subchunk size does not match file size. Should be 3435047, but is: 3425301 (difference: 9746)
 ```
 
-## Restoring Damaged Wave File Headers
+### Restoring Damaged Wave File Headers
 
 This tool is capable of restoring damaged wave files under the following conditions:
 
@@ -72,6 +74,8 @@ To restore damaged wave files, supply the `--restore` (short: `-r`) option along
 - A source directory and a destination directory
 
 In the second case, the source directory will be scanned for wave files and the restored versions of the files will be saved in the destination folder.
+
+Note that if corresponding files already exist in the destination path, these will not be overwritten for safety reasons. In case you want files to be overwritten, you have to delete the destination folder manually.
 
 If no further parameters are supplied, the following defaults are assumed:
 
@@ -88,30 +92,30 @@ These values can be changed with the following parameters:
 
 Examples are provided below:
 
-Restore wave files with 44,100 Hz sample rate, 16 bits per sample, Mono:
+Restore wave files with 44 kHz sample rate, 16 bits per sample, Mono:
 
 ```
 python3 waverecovery.py -r /path/to/directory/containing/wavefiles /path/to/destination/directory
 ```
 
-Restore wave files with 44,100 Hz sample rate, 24 bits per sample, Mono:
+Restore wave files with 44 kHz sample rate, 24 bits per sample, Mono:
 
 ```
 python3 waverecovery.py -r -b 24 /path/to/directory/containing/wavefiles /path/to/destination/directory
 ```
 
-Restore wave files with 96,000 Hz sample rate, 24 bits per sample, Mono:
+Restore wave files with 96 kHz sample rate, 24 bits per sample, Mono:
 
 ```
 python3 waverecovery.py -r -s 96000 -b 24 /path/to/directory/containing/wavefiles /path/to/destination/directory
 ```
 
-Restore wave files with 96,000 Hz sample rate, 24 bits per sample, Stereo:
+Restore wave files with 96 kHz sample rate, 24 bits per sample, Stereo:
 
 ```
 python3 waverecovery.py -r -s 96000 -b 24 -c 2 /path/to/directory/containing/wavefiles /path/to/destination/directory
 ```
 
-# Donations
+## Donations
 
 If this wave recovery tool helped you to restore your damaged wave files, I would appreciate a donation at <https://www.paypal.me/davehofmanndev>. Thank you very much! 
