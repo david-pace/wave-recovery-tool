@@ -16,6 +16,8 @@ Wave Recovery Tool is developed by David Hofmann &lt;dev@davehofmann.de&gt;
 
 To use the wave recovery tool, a [Python 3](https://www.python.org/downloads/) installation is required.
 
+For all commands below, `python3` is assumed to be in the system's executable `PATH`. If your system reports that `python3` can not be found, its containing directory must either be added to the `PATH` variable or `python3` must be replaced with the absolute path to the Python 3 interpreter.
+
 # Usage
 
 The tool provides two functionalities:
@@ -28,13 +30,13 @@ The tool provides two functionalities:
 To display header information for a specific wave file, invoke the tool as follows:
 
 ```
-python3 wave-recovery-tool.py /path/to/file.wav
+python3 waverecovery.py /path/to/file.wav
 ```
 
 The tool can also display wave header information for all files contained in a directory:
 
 ```
-python3 wave-recovery-tool.py /path/to/directory
+python3 waverecovery.py /path/to/directory
 ```
 
 All available header fields will be shown. In case a wave file header is damaged, error messages prefixed with `[ERROR]` will be displayed. In case size headers (particularly `chunk size` and `data subchunk size`) are not consistent with the overall wave file size, warnings prefixed with `[WARNING]` will be displayed. An example output looks like this:
@@ -89,23 +91,23 @@ Examples are provided below:
 Restore wave files with 44,100 Hz sample rate, 16 bits per sample, Mono:
 
 ```
-python3 wave-recovery-tool.py -r /path/to/directory/containing/wavefiles /path/to/destination/directory
+python3 waverecovery.py -r /path/to/directory/containing/wavefiles /path/to/destination/directory
 ```
 
 Restore wave files with 44,100 Hz sample rate, 24 bits per sample, Mono:
 
 ```
-python3 wave-recovery-tool.py -r -b 24 /path/to/directory/containing/wavefiles /path/to/destination/directory
+python3 waverecovery.py -r -b 24 /path/to/directory/containing/wavefiles /path/to/destination/directory
 ```
 
 Restore wave files with 96,000 Hz sample rate, 24 bits per sample, Mono:
 
 ```
-python3 wave-recovery-tool.py -r -s 96000 -b 24 /path/to/directory/containing/wavefiles /path/to/destination/directory
+python3 waverecovery.py -r -s 96000 -b 24 /path/to/directory/containing/wavefiles /path/to/destination/directory
 ```
 
 Restore wave files with 96,000 Hz sample rate, 24 bits per sample, Stereo:
 
 ```
-python3 wave-recovery-tool.py -r -s 96000 -b 24 -c 2 /path/to/directory/containing/wavefiles /path/to/destination/directory
+python3 waverecovery.py -r -s 96000 -b 24 -c 2 /path/to/directory/containing/wavefiles /path/to/destination/directory
 ```

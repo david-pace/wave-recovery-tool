@@ -1,4 +1,4 @@
 eclipse.preferences.version=1
-encoding/WaveHeaderProcessor.py=utf-8
 encoding/utils.py=utf-8
-encoding/wave-recovery-tool.py=utf-8
+encoding/waveheaderprocessor.py=utf-8
+encoding/waverecovery.py=utf-8

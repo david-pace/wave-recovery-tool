@@ -35,7 +35,7 @@ import os
 from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
 
-from WaveHeaderProcessor import WaveHeaderProcessor
+from waveheaderprocessor import WaveHeaderProcessor
 
 __all__ = []
 __version__ = 0.1
