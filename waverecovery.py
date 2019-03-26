@@ -42,7 +42,7 @@ __version__ = 0.1
 __date__ = '2019-03-25'
 __updated__ = '2019-03-26'
 
-DEBUG = 1
+DEBUG = 0
 TESTRUN = 0
 PROFILE = 0
 
@@ -74,8 +74,8 @@ def main(argv=None): # IGNORE:C0111
   Created by David Hofmann on %s.
   Copyright 2019 David Hofmann. All rights reserved.
 
-  Licensed under the GNU Lesser General Public License Version 3
-  http://www.apache.org/licenses/LICENSE-2.0
+  Licensed under the GNU General Public License Version 3
+  https://www.gnu.org/licenses/lgpl-3.0
 
   Distributed on an "AS IS" basis without warranties
   or conditions of any kind, either express or implied.
