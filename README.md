@@ -111,3 +111,7 @@ Restore wave files with 96,000 Hz sample rate, 24 bits per sample, Stereo:
 ```
 python3 waverecovery.py -r -s 96000 -b 24 -c 2 /path/to/directory/containing/wavefiles /path/to/destination/directory
 ```
+
+# Donations
+
+If this wave recovery tool helped you to restore your damaged wave files, I would appreciate a donation at <https://www.paypal.me/davehofmanndev>. Thank you very much! 
