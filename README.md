@@ -20,6 +20,41 @@ Furthermore, a copy of wave recovery tool needs to be downloaded or cloned with 
 
 For all commands below, `python3` is assumed to be in the system's executable `PATH`. If your system reports that `python3` can not be found, its containing directory must either be added to the `PATH` variable or `python3` must be replaced with the absolute path to the Python 3 interpreter.
 
+### Step by Step Instructions
+
+Here are more detailed instructions in case the previous section was not clear enough:
+
+1. Download [Python 3](https://www.python.org/downloads/)
+2. Install Python 3. If the installation provides an option to add Python 3 to your environment variables (especially the `PATH` variable), then use this option. You might have to look for "customized" or "advanced" options for that. Remember the location where you installed Python 3.
+3. On the [github page of Wave Recovery Tool](https://github.com/davehofmann/wave-recovery-tool), click the green **Clone or download** at the top right corner of the page, then click **Download ZIP** and save the ZIP file to a location of your choice (e.g. Desktop).
+4. Extract the downloaded ZIP file. This should result in a folder named `wave-recovery-tool-master` containing the program.
+5. Open a terminal application. Depending on your operating system, it is called **Command Line**, **Terminal** or similar.
+6. The terminal has a so called **working directory**, which is the file system context for executed programs. Typically, the terminal starts in your user directory. On Windows, this might be something like `C:\Users\homersimpson`, on Unix-like systems it is something like `/Users/homersimpson`. This directory is sometimes abbreviated as `~`.
+7. Use the command `cd` (change directory) to navigate to the extracted ZIP directory. Example: `cd Desktop\wave-recovery-tool-master` on Windows, `cd Desktop/wave-recovery-tool-master` on Unix systems. Hint: you can usually use the TAB key to auto-complete the folder names.
+8. Check if you can run Python 3 and the wave recovery tool by entering one of the following commands: on Windows, use `python waverecovery.py` On Unix systems, use `python3 waverecovery.py`. If it works, you will see usage instructions for the tool similar to this:
+
+```
+usage: waverecovery.py [-h] [-r] [-s SAMPLE_RATE] [-b BITS_PER_SAMPLE]
+                       [-c CHANNELS] [-v] [-V]
+                       source_path [destination_path]
+```
+
+If you see this, you can continue in the next section and add parameters for your files after `waverecovery.py`.
+
+In case you get an error message like `command not found`, you must replace `python` or `python3` with the absolute path to your python executable. On Windows, the command line looks like this:
+
+```
+"C:\Program Files\Python\Python37-32\python" waverecovery.py
+```
+
+Note that you have to add quotes around the python path if it contains spaces (like in `Program Files`). On Unix systems, the command like looks like:
+
+```
+/usr/local/bin/python3 waverecovery.py
+```
+
+Of course, you have to replace the paths with the actual paths on your system where Python3 was installed.
+
 ## Usage
 
 The tool provides two functionalities:
