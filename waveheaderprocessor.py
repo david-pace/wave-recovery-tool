@@ -40,41 +40,43 @@ __updated__ = '2019-09-27'
 
 class WaveHeaderProcessor():
             
-    def displayHeaderInfos(self, path):
+    def display_header_infos(self, path):
         
         if os.path.isdir(path):
-            self.displayHeaderInfosDirectory(path)
+            self.display_header_infos_in_directory(path)
         elif os.path.isfile(path):
-            if self.isWaveFile(path):
-                self.analyzeWaveHeader(path)
-            elif self.isAIFFFile(path):
-                self.analyzeAIFFHeader(path)
+            if self.is_wave_file(path):
+                self.analyze_wave_header(path)
+            elif self.is_aiff_file(path):
+                self.analyze_aiff_header(path)
             else:
                 print_error("File is neither a WAVE nor an AIFF file: {}".format(path))
         else:
             print_error("Given path is neither a file nor a directory: {}".format(path))
     
-    def displayHeaderInfosDirectory(self, path):
+    def display_header_infos_in_directory(self, path):
         print("Scanning directory {}...".format(path))
         num_audio_files = 0
         for current_dir, subdirs, files in os.walk(path):
             for file in files:
                 full_path = os.path.join(current_dir, file)
-                if self.isWaveFile(full_path):
-                    self.analyzeWaveHeader(full_path)
+                if self.is_wave_file(full_path):
+                    self.analyze_wave_header(full_path)
                     print_separator()
                     num_audio_files += 1
-                elif self.isAIFFFile(full_path):
-                    self.analyzeAIFFHeader(full_path)
+                elif self.is_aiff_file(full_path):
+                    self.analyze_aiff_header(full_path)
                     print_separator()
                     num_audio_files += 1
+                else:
+                    print("Unrecognized file extension, skipping file {}".format(full_path))
         print("Total Number of Audio Files:", num_audio_files)
                     
-    def isWaveFile(self, file):
+    def is_wave_file(self, file):
         extension = os.path.splitext(file)[-1].lower()
         return extension == ".wav" or extension == ".wave"
     
-    def isAIFFFile(self, file):
+    def is_aiff_file(self, file):
         extension = os.path.splitext(file)[-1].lower()
         return extension == ".aif" or extension == ".aiff"
     
@@ -86,7 +88,7 @@ class WaveHeaderProcessor():
         path: path to the wave file to analyze
         display: flag indicating whether analysis output should be displayed (True) or whether the method is just used for analysis (False)
     """
-    def analyzeWaveHeader(self, path, display=True):
+    def analyze_wave_header(self, path, display=True):
         
         found_error = False
         
@@ -219,7 +221,7 @@ class WaveHeaderProcessor():
         path: path to the wave file to analyze
         display: flag indicating whether analysis output should be displayed (True) or whether the method is just used for analysis (False)
     """
-    def analyzeAIFFHeader(self, path, display=True):
+    def analyze_aiff_header(self, path, display=True):
         
         found_error = False
         
@@ -264,7 +266,7 @@ class WaveHeaderProcessor():
                 
                 current_position = aiff_file.tell()
                 
-                if self.processAIFFChunk(chunk_name_bytes, chunk_size, aiff_file, display):
+                if self.process_aiff_chunk(chunk_name_bytes, chunk_size, aiff_file, display):
                     found_error = True
                     
                 if aiff_file.tell() == current_position:
@@ -273,11 +275,11 @@ class WaveHeaderProcessor():
                 
         return found_error
     
-    def processAIFFChunk(self, chunk_name_bytes, chunk_size, aiff_file, display):
+    def process_aiff_chunk(self, chunk_name_bytes, chunk_size, aiff_file, display):
         if chunk_name_bytes == b'COMM':
-            return self.processCOMMChunk(chunk_size, aiff_file, display)
+            return self.process_comm_chunk(chunk_size, aiff_file, display)
         elif chunk_name_bytes == b'SSND':
-            return self.processSSNDChunk(chunk_size, aiff_file, display)
+            return self.process_ssnd_chunk(chunk_size, aiff_file, display)
         else:
             print_with_condition(display, "Skipping {} chunk.".format(chunk_name_bytes.decode("utf-8")))
             aiff_file.seek(chunk_size, 1) # skip chunk and set file position to next chunk
@@ -330,7 +332,7 @@ class WaveHeaderProcessor():
         #print("Mantissa:", mantissa)
         return (-1) ** sign * (integer_part + float(mantissa) / (2 ** 63)) * (2 ** (exponent - 16383))
 
-    def processCOMMChunk(self, chunk_size, aiff_file, display):
+    def process_comm_chunk(self, chunk_size, aiff_file, display):
         found_error = False
         print_with_condition(display, "Reading COMM chunk.")
         if chunk_size != 18:
@@ -369,7 +371,7 @@ class WaveHeaderProcessor():
             
         return found_error
         
-    def processSSNDChunk(self, chunk_size, aiff_file, display):
+    def process_ssnd_chunk(self, chunk_size, aiff_file, display):
         print_with_condition(display, "Reading SSND chunk.")
         offset_bytes = aiff_file.read(4)
         offset = struct.unpack(">I", offset_bytes)[0]
@@ -383,15 +385,18 @@ class WaveHeaderProcessor():
         aiff_file.seek(chunk_size - 8, 1) # skip audio data
         return False
             
-    def repairWaveFileHeaders(self, source_path, destination_path, sample_rate, bits_per_sample, num_channels, verbose):
+    def repair_audio_file_headers(self, source_path, destination_path, sample_rate, bits_per_sample, num_channels, verbose):
         if os.path.isdir(source_path):
-            self.repairWaveFileHeadersInDirectory(source_path, destination_path, sample_rate, bits_per_sample, num_channels)
+            self.repair_audio_file_headers_in_directory(source_path, destination_path, sample_rate, bits_per_sample, num_channels)
         elif os.path.isfile(source_path):
-            self.repairWaveFileHeader(source_path, destination_path, sample_rate, bits_per_sample, num_channels)
+            if self.is_wave_file(source_path):
+                self.repair_wave_file_header(source_path, destination_path, sample_rate, bits_per_sample, num_channels)
+            else:
+                print("Unrecognized file extension, skipping file {}".format(source_path))
         else:
             print_error("Given path is neither a file nor a directory:", source_path)
         
-    def repairWaveFileHeadersInDirectory(self, source_path, destination_path, sample_rate, bits_per_sample, num_channels):
+    def repair_audio_file_headers_in_directory(self, source_path, destination_path, sample_rate, bits_per_sample, num_channels):
         if not os.path.exists(destination_path):
             print("Creating destination directory {}...".format(destination_path))
             os.mkdir(destination_path)
@@ -406,16 +411,16 @@ class WaveHeaderProcessor():
         for current_dir, subdirs, files in os.walk(source_path):
             for file in files:
                 full_path = os.path.join(current_dir, file)
-                if self.isWaveFile(full_path):
-                    found_error = self.analyzeWaveHeader(full_path, False)
+                if self.is_wave_file(full_path):
+                    found_error = self.analyze_wave_header(full_path, False)
                     if found_error:
                         full_destination_path = os.path.join(destination_path, file)
-                        if self.repairWaveFileHeader(full_path, full_destination_path, sample_rate, bits_per_sample, num_channels):
+                        if self.repair_wave_file_header(full_path, full_destination_path, sample_rate, bits_per_sample, num_channels):
                             num_repaired_wave_files += 1
                         print_separator()
         print("Total Number of Repaired Wave Files:", num_repaired_wave_files)
     
-    def repairWaveFileHeader(self, source_path, destination_path, sample_rate, bits_per_sample, num_channels):
+    def repair_wave_file_header(self, source_path, destination_path, sample_rate, bits_per_sample, num_channels):
         
         print("Restoring wave header in source file {}, storing result file in {}".format(source_path, destination_path))
         

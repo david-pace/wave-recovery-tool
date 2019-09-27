@@ -125,11 +125,11 @@ USAGE
                 raise CLIError("Destination path is required for the restore operation.")
             
             processor = WaveHeaderProcessor()
-            processor.repairWaveFileHeaders(source_path, destination_path, sample_rate, bits_per_sample, num_channels, verbose)
+            processor.repair_audio_file_headers(source_path, destination_path, sample_rate, bits_per_sample, num_channels, verbose)
             
         else:
             processor = WaveHeaderProcessor()
-            processor.displayHeaderInfos(source_path)
+            processor.display_header_infos(source_path)
             
         return 0
     except KeyboardInterrupt:
