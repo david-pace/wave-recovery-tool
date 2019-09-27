@@ -1,5 +1,5 @@
 #!/usr/local/bin/python3
-# encoding: utf-8
+# -*- coding: utf-8 -*-
 '''
 -- Wave Header Processor
 
@@ -31,6 +31,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import os
 import struct
+import traceback
 from utils import print_error, print_warning, byte_string_to_hex,\
     print_with_condition, error_with_condition, warning_with_condition,\
     print_separator
@@ -60,12 +61,14 @@ class WaveHeaderProcessor():
         for current_dir, subdirs, files in os.walk(path):
             for file in files:
                 full_path = os.path.join(current_dir, file)
-                if self.is_wave_file(full_path):
-                    self.analyze_wave_header(full_path)
-                    print_separator()
-                    num_audio_files += 1
-                elif self.is_aiff_file(full_path):
-                    self.analyze_aiff_header(full_path)
+                is_wave_file = self.is_wave_file(full_path)
+                is_aiff_file = self.is_aiff_file(full_path)
+                if is_wave_file or is_aiff_file:
+                    if is_wave_file:
+                        self.analyze_wave_header(full_path)
+                    else:
+                        self.analyze_aiff_header(full_path)
+                        
                     print_separator()
                     num_audio_files += 1
                 else:
@@ -266,7 +269,7 @@ class WaveHeaderProcessor():
                 
                 current_position = aiff_file.tell()
                 
-                if self.process_aiff_chunk(chunk_name_bytes, chunk_size, aiff_file, display):
+                if self.analyze_aiff_chunk(chunk_name_bytes, chunk_size, aiff_file, display):
                     found_error = True
                     
                 if aiff_file.tell() == current_position:
@@ -275,11 +278,11 @@ class WaveHeaderProcessor():
                 
         return found_error
     
-    def process_aiff_chunk(self, chunk_name_bytes, chunk_size, aiff_file, display):
+    def analyze_aiff_chunk(self, chunk_name_bytes, chunk_size, aiff_file, display):
         if chunk_name_bytes == b'COMM':
-            return self.process_comm_chunk(chunk_size, aiff_file, display)
+            return self.analyze_comm_chunk(chunk_size, aiff_file, display)
         elif chunk_name_bytes == b'SSND':
-            return self.process_ssnd_chunk(chunk_size, aiff_file, display)
+            return self.analyze_ssnd_chunk(chunk_size, aiff_file, display)
         else:
             print_with_condition(display, "Skipping {} chunk.".format(chunk_name_bytes.decode("utf-8")))
             aiff_file.seek(chunk_size, 1) # skip chunk and set file position to next chunk
@@ -331,8 +334,40 @@ class WaveHeaderProcessor():
         mantissa = integer_part_and_fraction_int & 0x7FFFFFFFFFFFFFFF
         #print("Mantissa:", mantissa)
         return (-1) ** sign * (integer_part + float(mantissa) / (2 ** 63)) * (2 ** (exponent - 16383))
+    
+    def encode_float80(self, number):
+        u"""
+        >>> p = WaveHeaderProcessor()
+        >>> p.encode_float80(8000.0) 
+        b'@\\x0b\\xfa\\x00\\x00\\x00\\x00\\x00\\x00\\x00'
+        >>> p.encode_float80(44100.0)  
+        b'@\\x0e\\xacD\\x00\\x00\\x00\\x00\\x00\\x00'
+        >>> p.encode_float80(48000.0)  
+        b'@\\x0e\\xbb\\x80\\x00\\x00\\x00\\x00\\x00\\x00'
+        >>> p.encode_float80(88200.0)  
+        b'@\\x0f\\xacD\\x00\\x00\\x00\\x00\\x00\\x00'
+        >>> p.encode_float80(96000.0)  
+        b'@\\x0f\\xbb\\x80\\x00\\x00\\x00\\x00\\x00\\x00'
+        >>> p.encode_float80(192000.0)  
+        b'@\\x10\\xbb\\x80\\x00\\x00\\x00\\x00\\x00\\x00'
+        """
+        if number == 8000.0:
+            return (0x400BFA00000000000000).to_bytes(10, "big")
+        elif number == 44100.0:
+            return (0x400EAC44000000000000).to_bytes(10, "big")
+        elif number == 48000.0:
+            return (0x400EBB80000000000000).to_bytes(10, "big")
+        elif number == 88200.0:
+            return (0x400FAC44000000000000).to_bytes(10, "big")
+        elif number == 96000.0:
+            return (0x400FBB80000000000000).to_bytes(10, "big")
+        elif number == 192000.0:
+            return (0x4010BB80000000000000).to_bytes(10, "big")
+        else:
+            raise RuntimeError("Encoding of number {} not implemented yet.".format(number))
+        
 
-    def process_comm_chunk(self, chunk_size, aiff_file, display):
+    def analyze_comm_chunk(self, chunk_size, aiff_file, display):
         found_error = False
         print_with_condition(display, "Reading COMM chunk.")
         if chunk_size != 18:
@@ -371,7 +406,7 @@ class WaveHeaderProcessor():
             
         return found_error
         
-    def process_ssnd_chunk(self, chunk_size, aiff_file, display):
+    def analyze_ssnd_chunk(self, chunk_size, aiff_file, display):
         print_with_condition(display, "Reading SSND chunk.")
         offset_bytes = aiff_file.read(4)
         offset = struct.unpack(">I", offset_bytes)[0]
@@ -391,6 +426,8 @@ class WaveHeaderProcessor():
         elif os.path.isfile(source_path):
             if self.is_wave_file(source_path):
                 self.repair_wave_file_header(source_path, destination_path, sample_rate, bits_per_sample, num_channels)
+            elif self.is_aiff_file(source_path):
+                self.repair_aiff_file_header(source_path, destination_path, sample_rate, bits_per_sample, num_channels)
             else:
                 print("Unrecognized file extension, skipping file {}".format(source_path))
         else:
@@ -407,30 +444,47 @@ class WaveHeaderProcessor():
         
         print("Scanning directory {}...".format(source_path))
         print_separator()
-        num_repaired_wave_files = 0
+        num_repaired_audio_files = 0
         for current_dir, subdirs, files in os.walk(source_path):
             for file in files:
                 full_path = os.path.join(current_dir, file)
-                if self.is_wave_file(full_path):
-                    found_error = self.analyze_wave_header(full_path, False)
+                is_wave_file = self.is_wave_file(full_path)
+                is_aiff_file = self.is_aiff_file(full_path)
+                if is_wave_file or is_aiff_file:
+                    found_error = False
+                    if is_wave_file:
+                        found_error = self.analyze_wave_header(full_path, False)
+                    else:
+                        found_error = self.analyze_aiff_header(full_path, False)
+                        
                     if found_error:
                         full_destination_path = os.path.join(destination_path, file)
-                        if self.repair_wave_file_header(full_path, full_destination_path, sample_rate, bits_per_sample, num_channels):
-                            num_repaired_wave_files += 1
+                        
+                        if os.path.exists(destination_path):
+                            print_error("Destination file {} already exists. Canceling before anything is lost...".format(destination_path))
+                            continue
+                        
+                        repair_result = False
+                        if is_wave_file:
+                            repair_result = self.repair_wave_file_header(full_path, full_destination_path, sample_rate, bits_per_sample, num_channels)
+                        else:
+                            repair_result = self.repair_aiff_file_header(full_path, full_destination_path, sample_rate, bits_per_sample, num_channels)
+                        
+                        if repair_result:
+                            num_repaired_audio_files += 1
+                        
                         print_separator()
-        print("Total Number of Repaired Wave Files:", num_repaired_wave_files)
+                else:
+                    print("Unrecognized file extension, skipping file {}".format(full_path))
+                    
+        print("Total Number of Repaired Audio Files:", num_repaired_audio_files)
     
     def repair_wave_file_header(self, source_path, destination_path, sample_rate, bits_per_sample, num_channels):
         
         print("Restoring wave header in source file {}, storing result file in {}".format(source_path, destination_path))
         
-        if os.path.exists(destination_path):
-            print_error("Destination file {} already exists. Canceling before anything is lost...".format(destination_path))
-            return False
-        
-        num_bytes = os.path.getsize(source_path)
-        
         print("Writing wave file header with sample rate {} Hz, {} bits per sample, {} audio channels...".format(sample_rate, bits_per_sample, num_channels))
+        num_bytes = os.path.getsize(source_path)
         
         chunk_size = num_bytes-8
         data_chunk_size = num_bytes-44
@@ -455,7 +509,7 @@ class WaveHeaderProcessor():
                 waveFile.write(b"data")
                 waveFile.write(struct.pack("<I", data_chunk_size)) # data chunk size (raw audio data size)
                 
-                print("Wave Header written, copying audio data...")
+                print("Wave header written, copying audio data...")
                 
                 with open(source_path, "rb") as sourceWaveFile:
                     # read audio data after the header
@@ -474,6 +528,95 @@ class WaveHeaderProcessor():
             print("Wave file {} restored successfully.".format(destination_path))
         
         return True
+    
+    def repair_aiff_file_header(self, source_path, destination_path, sample_rate, bits_per_sample, num_channels):
+        print("Restoring AIFF header in source file {}, storing result file in {}".format(source_path, destination_path))
+        print("Writing AIFF file header with sample rate {} Hz, {} bits per sample, {} audio channels...".format(sample_rate, bits_per_sample, num_channels))
+        num_bytes = os.path.getsize(source_path)
+        
+        form_chunk_size = num_bytes-8
+        
+        print("Computed FORM chunk size: {} bytes".format(form_chunk_size))
+        
+        try:
+            with open(source_path, "rb") as source_aiff_file, open(destination_path, "wb") as aiff_file:
+                aiff_file.write(b"FORM")
+                aiff_file.write(struct.pack(">I", form_chunk_size)) # chunk size = total byte size - 8
+                aiff_file.write(b"AIFF")
+                
+                source_aiff_file.seek(12)
+                while source_aiff_file.tell() < num_bytes:
+                    chunk_header = source_aiff_file.read(8)
+                    chunk_name_bytes = chunk_header[:4]
+                    chunk_size_bytes = chunk_header[4:8]
+                    chunk_size = struct.unpack(">I", chunk_size_bytes)[0]
+                    
+                    current_position = source_aiff_file.tell()
+                    
+                    self.repair_aiff_chunk(source_aiff_file, aiff_file, chunk_name_bytes, chunk_size, sample_rate, bits_per_sample, num_channels, num_bytes)
+                        
+                    if source_aiff_file.tell() == current_position:
+                        raise RuntimeError("No bytes consumed while processing chunk.")
+                    
+        except Exception as e:
+            print_error("Error while restoring AIFF file {}:".format(destination_path))
+            traceback.print_exc()
+            return False
+        else:
+            print("AIFF file {} restored successfully.".format(destination_path))
+        
+        return True
+    
+    def repair_aiff_chunk(self, source_aiff_file, aiff_file, chunk_name_bytes, chunk_size, sample_rate, bits_per_sample, num_channels, num_bytes):
+        if chunk_name_bytes == b'COMM':
+            self.repair_comm_chunk(source_aiff_file, aiff_file, chunk_size, sample_rate, bits_per_sample, num_channels)
+        elif chunk_name_bytes == b'SSND':
+            self.repair_ssnd_chunk(source_aiff_file, aiff_file, num_bytes)
+        else:
+            print("Copying {} chunk.".format(chunk_name_bytes.decode("utf-8")))
+            aiff_file.write(chunk_name_bytes)
+            aiff_file.write(struct.pack(">I", chunk_size))
+            buffer = source_aiff_file.read(chunk_size)
+            aiff_file.write(buffer)
+            
+    def repair_comm_chunk(self, source_aiff_file, aiff_file, chunk_size, sample_rate, bits_per_sample, num_channels):
+        
+        print("Repairing COMM chunk.")
+        
+        # skip num channel bytes
+        source_aiff_file.seek(2, 1)
+            
+        num_frames_bytes = source_aiff_file.read(4)
+        num_frames = struct.unpack(">I", num_frames_bytes)[0]
+        
+        source_aiff_file.seek(chunk_size-6, 1)
+            
+        aiff_file.write(b"COMM")
+        aiff_file.write(struct.pack(">I", 18)) # COMM chunk size
+        aiff_file.write(struct.pack(">H", num_channels)) # number of channels
+        aiff_file.write(struct.pack(">I", num_frames))
+        aiff_file.write(struct.pack(">H", bits_per_sample)) # bits per sample
+        aiff_file.write(self.encode_float80(sample_rate)) # sample rate
+        
+    
+    def repair_ssnd_chunk(self, source_aiff_file, aiff_file, num_bytes):
+        print("Repairing and copying SSND chunk.")
+        
+        aiff_file.write(b"SSND")
+        ssnd_chunk_size = num_bytes - source_aiff_file.tell()
+        aiff_file.write(struct.pack("<I", ssnd_chunk_size)) # data chunk size (raw audio data size)
+        #aiff_file.write(struct.pack(">I", 0)) # offset
+        #aiff_file.write(struct.pack(">I", 0)) # block size
+        
+        while True:
+            buffer = source_aiff_file.read(2048)
+            if buffer:
+                aiff_file.write(buffer)
+            else:
+                break    
+            
+            
+        
     
 if __name__ == "__main__":
     import doctest
