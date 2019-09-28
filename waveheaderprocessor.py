@@ -3,7 +3,8 @@
 '''
 -- Wave Header Processor
 
-Displays information about wave file headers and restores corrupted wave file headers.
+Displays information about WAVE/AIFF file headers
+and restores corrupted WAVE/AIFF file headers.
 
 Copyright (C) 2019 David Hofmann
 
@@ -32,12 +33,12 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import os
 import struct
 import traceback
-from utils import print_error, print_warning, byte_string_to_hex,\
+from utils import print_error, byte_string_to_hex,\
     print_with_condition, error_with_condition, warning_with_condition,\
     print_separator
 
 __date__ = '2019-03-25'
-__updated__ = '2019-09-27'
+__updated__ = '2019-09-28'
 
 class WaveHeaderProcessor():
             
@@ -98,14 +99,14 @@ class WaveHeaderProcessor():
         file_name = os.path.basename(path)
         num_bytes = os.path.getsize(path)
         
-        print_with_condition(display, "Displaying Wave File Header Data for File {}".format(file_name))
+        print_with_condition(display, "Displaying WAVE File Header Data for File {}".format(file_name))
         print_with_condition(display, "Number of Bytes: {}".format(num_bytes))
         
         if num_bytes < 44:
-            print_with_condition(display, "File is only {} bytes long and therefore can not contain a complete wave file header.".format(num_bytes))
+            print_with_condition(display, "File is only {} bytes long and therefore can not contain a complete WAVE file header.".format(num_bytes))
             found_error = True
         
-        print_with_condition(display, "Reading Wave Header...")
+        print_with_condition(display, "Reading WAVE Header...")
         header_bytes = None
         with open(path, "rb") as waveFile:
             header_bytes = waveFile.read(44)
@@ -217,11 +218,11 @@ class WaveHeaderProcessor():
         return found_error
     
     """
-    Displays information about the wave file header of the given file.
+    Displays information about the WAVE file header of the given file.
     Returns a boolean indicating whether the header has errors.
     
     Args:
-        path: path to the wave file to analyze
+        path: path to the WAVE file to analyze
         display: flag indicating whether analysis output should be displayed (True) or whether the method is just used for analysis (False)
     """
     def analyze_aiff_header(self, path, display=True):
@@ -298,7 +299,7 @@ class WaveHeaderProcessor():
     Integer part (1 bit)
     Mantissa (63 bits)
     """
-    def decode_float80(self, bytes):
+    def decode_float80(self, byte_string):
         """
         >>> p = WaveHeaderProcessor()
         >>> p.decode_float80((0x400BFA00000000000000).to_bytes(10, "big"))  
@@ -315,11 +316,11 @@ class WaveHeaderProcessor():
         192000.0
         """
         # first two bytes contain sign bit and 15 exponent bits
-        sign_and_exponent_bytes = bytes[:2]
+        sign_and_exponent_bytes = byte_string[:2]
         sign_and_exponent_int = int.from_bytes(sign_and_exponent_bytes, "big")
         
         # 8 bytes for the integer part (1 bit) and mantissa (63 bits)
-        integer_part_and_fraction_bytes = bytes[2:]
+        integer_part_and_fraction_bytes = byte_string[2:]
         integer_part_and_fraction_int = int.from_bytes(integer_part_and_fraction_bytes, "big")
         
         sign = 1 if sign_and_exponent_int & 0x80 != 0 else 0
@@ -424,6 +425,10 @@ class WaveHeaderProcessor():
         if os.path.isdir(source_path):
             self.repair_audio_file_headers_in_directory(source_path, destination_path, sample_rate, bits_per_sample, num_channels)
         elif os.path.isfile(source_path):
+            if os.path.exists(destination_path):
+                if not self.ask_user_to_overwrite_destination_file(destination_path):
+                    return
+            
             if self.is_wave_file(source_path):
                 self.repair_wave_file_header(source_path, destination_path, sample_rate, bits_per_sample, num_channels)
             elif self.is_aiff_file(source_path):
@@ -431,8 +436,15 @@ class WaveHeaderProcessor():
             else:
                 print("Unrecognized file extension, skipping file {}".format(source_path))
         else:
-            print_error("Given path is neither a file nor a directory:", source_path)
+            print_error("Given path is neither a file nor a directory: {}".format(source_path))
         
+
+    def ask_user_to_overwrite_destination_file(self, destination_path):
+        user_input = input("Destination file {} already exists. Do you want to overwrite the file (y/N)? ".format(destination_path))
+        if user_input.strip().lower() == "y":
+            return True
+        return False
+
     def repair_audio_file_headers_in_directory(self, source_path, destination_path, sample_rate, bits_per_sample, num_channels):
         if not os.path.exists(destination_path):
             print("Creating destination directory {}...".format(destination_path))
@@ -458,11 +470,12 @@ class WaveHeaderProcessor():
                         found_error = self.analyze_aiff_header(full_path, False)
                         
                     if found_error:
+                        print("Found errors in file {}, trying to restore...".format(full_path))
                         full_destination_path = os.path.join(destination_path, file)
                         
-                        if os.path.exists(destination_path):
-                            print_error("Destination file {} already exists. Canceling before anything is lost...".format(destination_path))
-                            continue
+                        if os.path.exists(full_destination_path):
+                            if not self.ask_user_to_overwrite_destination_file(full_destination_path):
+                                continue
                         
                         repair_result = False
                         if is_wave_file:
@@ -481,9 +494,9 @@ class WaveHeaderProcessor():
     
     def repair_wave_file_header(self, source_path, destination_path, sample_rate, bits_per_sample, num_channels):
         
-        print("Restoring wave header in source file {}, storing result file in {}".format(source_path, destination_path))
+        print("Restoring WAVE header in source file {}, storing result file in {}".format(source_path, destination_path))
         
-        print("Writing wave file header with sample rate {} Hz, {} bits per sample, {} audio channels...".format(sample_rate, bits_per_sample, num_channels))
+        print("Writing WAVE file header with sample rate {} Hz, {} bits per sample, {} audio channels...".format(sample_rate, bits_per_sample, num_channels))
         num_bytes = os.path.getsize(source_path)
         
         chunk_size = num_bytes-8
@@ -492,40 +505,41 @@ class WaveHeaderProcessor():
         print("Computed chunk size: {} bytes, data chunk size: {} bytes".format(chunk_size, data_chunk_size))
         
         try:
-            with open(destination_path, "wb") as waveFile:
-                waveFile.write(b"RIFF")
-                waveFile.write(struct.pack("<I", chunk_size)) # chunk size = total byte size - 8
-                waveFile.write(b"WAVE")
-                waveFile.write(b"fmt ")
-                waveFile.write(struct.pack("<I", 16)) # subchunk 1 size
-                waveFile.write(struct.pack("<H", 1)) # audio format
-                waveFile.write(struct.pack("<H", num_channels)) # number of channels
-                waveFile.write(struct.pack("<I", sample_rate)) # sample rate
+            with open(destination_path, "wb") as wave_file:
+                wave_file.write(b"RIFF")
+                wave_file.write(struct.pack("<I", chunk_size)) # chunk size = total byte size - 8
+                wave_file.write(b"WAVE")
+                wave_file.write(b"fmt ")
+                wave_file.write(struct.pack("<I", 16)) # subchunk 1 size
+                wave_file.write(struct.pack("<H", 1)) # audio format
+                wave_file.write(struct.pack("<H", num_channels)) # number of channels
+                wave_file.write(struct.pack("<I", sample_rate)) # sample rate
                 block_align = int(num_channels * bits_per_sample / 8)
                 byte_rate = sample_rate * block_align
-                waveFile.write(struct.pack("<I", byte_rate)) # byte rate
-                waveFile.write(struct.pack("<H", block_align)) # block align
-                waveFile.write(struct.pack("<H", bits_per_sample)) # bits per sample
-                waveFile.write(b"data")
-                waveFile.write(struct.pack("<I", data_chunk_size)) # data chunk size (raw audio data size)
+                wave_file.write(struct.pack("<I", byte_rate)) # byte rate
+                wave_file.write(struct.pack("<H", block_align)) # block align
+                wave_file.write(struct.pack("<H", bits_per_sample)) # bits per sample
+                wave_file.write(b"data")
+                wave_file.write(struct.pack("<I", data_chunk_size)) # data chunk size (raw audio data size)
                 
-                print("Wave header written, copying audio data...")
+                print("WAVE header written, copying audio data...")
                 
-                with open(source_path, "rb") as sourceWaveFile:
+                with open(source_path, "rb") as source_wave_file:
                     # read audio data after the header
-                    sourceWaveFile.seek(44)
+                    source_wave_file.seek(44)
                     while True:
-                        buffer = sourceWaveFile.read(2048)
+                        buffer = source_wave_file.read(2048)
                         if buffer:
-                            waveFile.write(buffer)
+                            wave_file.write(buffer)
                         else:
                             break
                     
-        except Exception as e:
-            print_error("Error while writing wave file {}: {}".format(destination_path, str(e)))
+        except Exception:
+            print_error("Error while writing WAVE file {}:".format(destination_path))
+            traceback.print_exc()
             return False
         else:
-            print("Wave file {} restored successfully.".format(destination_path))
+            print("WAVE file {} written successfully.".format(destination_path))
         
         return True
     
@@ -544,12 +558,18 @@ class WaveHeaderProcessor():
                 aiff_file.write(struct.pack(">I", form_chunk_size)) # chunk size = total byte size - 8
                 aiff_file.write(b"AIFF")
                 
+                comm_chunk_written = False
+                ssnd_chunk_written = False
+                
                 source_aiff_file.seek(12)
                 while source_aiff_file.tell() < num_bytes:
                     chunk_header = source_aiff_file.read(8)
                     chunk_name_bytes = chunk_header[:4]
                     chunk_size_bytes = chunk_header[4:8]
                     chunk_size = struct.unpack(">I", chunk_size_bytes)[0]
+                    
+                    if chunk_size == 0:
+                        raise RuntimeError("Invalid chunk size (0) for chunk with name '{}'".format(chunk_header.decode("utf-8")))
                     
                     current_position = source_aiff_file.tell()
                     
@@ -558,12 +578,21 @@ class WaveHeaderProcessor():
                     if source_aiff_file.tell() == current_position:
                         raise RuntimeError("No bytes consumed while processing chunk.")
                     
-        except Exception as e:
+                    if chunk_name_bytes == b"COMM":
+                        comm_chunk_written = True
+                    elif chunk_name_bytes == b"SSND":
+                        ssnd_chunk_written = True
+                    
+        except Exception:
             print_error("Error while restoring AIFF file {}:".format(destination_path))
             traceback.print_exc()
             return False
         else:
-            print("AIFF file {} restored successfully.".format(destination_path))
+            if comm_chunk_written and ssnd_chunk_written:
+                print("AIFF file {} written successfully.".format(destination_path))
+            else:
+                print("AIFF file could not be restored because the COMM and/or SSND chunks could not be located in the source file.")
+                return False
         
         return True
     
@@ -585,7 +614,8 @@ class WaveHeaderProcessor():
         
         # skip num channel bytes
         source_aiff_file.seek(2, 1)
-            
+        
+        # read number of frames from source file
         num_frames_bytes = source_aiff_file.read(4)
         num_frames = struct.unpack(">I", num_frames_bytes)[0]
         

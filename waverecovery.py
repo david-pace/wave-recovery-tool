@@ -3,7 +3,7 @@
 '''
  -- Wave Recovery Tool
 
-Command line interface for the wave recovery tool.
+Command line interface for Wave Recovery Tool.
 
 Copyright (C) 2019 David Hofmann
 
@@ -40,7 +40,7 @@ from waveheaderprocessor import WaveHeaderProcessor
 __all__ = []
 __version__ = 0.1
 __date__ = '2019-03-25'
-__updated__ = '2019-03-26'
+__updated__ = '2019-09-28'
 
 DEBUG = 0
 TESTRUN = 0
