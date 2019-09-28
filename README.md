@@ -1,8 +1,8 @@
 # Wave Recovery Tool
 
-Tool to display wave file header information and to restore corrupted wave file headers.
+Tool to display WAVE/AIFF file header information and to restore corrupted WAVE/AIFF file headers.
 
-This program was originally developed to recover damaged wave files which were destroyed due to a bug in the audio application _Logic_. See [this blog post](http://www.davehofmann.de/when-logic-destroys-your-audio-files/) for more details.
+This program was originally developed to recover damaged audio files which were destroyed due to a bug in the audio application _Logic_. See [this blog post](http://www.davehofmann.de/when-logic-destroys-your-audio-files/) for more details.
 
 ## License
 
@@ -16,31 +16,27 @@ Wave Recovery Tool is developed by David Hofmann &lt;dev@davehofmann.de&gt;
 
 To use the wave recovery tool, a [Python 3](https://www.python.org/downloads/) installation is required.
 
-Furthermore, a copy of wave recovery tool needs to be downloaded or cloned with `git` using the green **Clone or download** button on the top right corner of this page. All commands below must be executed in the cloned or downloaded and extracted directory containing the file `waverecovery.py`.
+This tool is capable of reconstructing damaged WAVE and AIFF headers. This will only work if the raw audio data is still in the file, i.e. the file has a reasonable file size in respect to the duration of the recorded audio material (usually several megabytes). In a typical scenario where recovery is possible, one of the following things happen when you try to play the audio file:
 
-For all commands below, `python3` is assumed to be in the system's executable `PATH`. If your system reports that `python3` can not be found, its containing directory must either be added to the `PATH` variable or `python3` must be replaced with the absolute path to the Python 3 interpreter.
+* Audio players (like VLC or Audacity) display errors; Logic displays the error `One or more audio files changed in length.`
+* You simply hear nothing
 
-### Step by Step Instructions
-
-Here are more detailed instructions in case the previous section was not clear enough:
+## Step by Step Instructions
 
 1. Download [Python 3](https://www.python.org/downloads/)
-2. Install Python 3. If the installation provides an option to add Python 3 to your environment variables (especially the `PATH` variable), then use this option. You might have to look for "customized" or "advanced" options for that. Remember the location where you installed Python 3.
-3. On the [github page of Wave Recovery Tool](https://github.com/davehofmann/wave-recovery-tool), click the green **Clone or download** at the top right corner of the page, then click **Download ZIP** and save the ZIP file to a location of your choice (e.g. Desktop).
-4. Extract the downloaded ZIP file. This should result in a folder named `wave-recovery-tool-master` containing the program.
-5. Open a terminal application. Depending on your operating system, it is called **Command Line**, **Terminal** or similar.
-6. The terminal has a so called **working directory**, which is the file system context for executed programs. Typically, the terminal starts in your user directory. On Windows, this might be something like `C:\Users\homersimpson`, on Unix-like systems it is something like `/Users/homersimpson`. This directory is sometimes abbreviated as `~`.
-7. Use the command `cd` (change directory) to navigate to the extracted ZIP directory. Example: `cd Desktop\wave-recovery-tool-master` on Windows, `cd Desktop/wave-recovery-tool-master` on Unix systems. Hint: you can usually use the TAB key to auto-complete the folder names.
-8. Check if you can run Python 3 and the wave recovery tool by entering one of the following commands: on Windows, use `python waverecovery.py` On Unix systems, use `python3 waverecovery.py`. If it works, you will see usage instructions for the tool similar to this:
+2. Install Python 3. If the installation provides an option to add Python 3 to your environment variables (especially the `PATH` variable), then enable it. You might have to look for "customized" or "advanced" options for that. Remember the location where Python 3 was installed.
+3. On the [github page of Wave Recovery Tool](https://github.com/davehofmann/wave-recovery-tool), click the green **Clone or download** at the top right corner of the page, then click **Download ZIP** and save the ZIP file to your Desktop.
+4. Extract the downloaded ZIP file. This should result in a folder named `wave-recovery-tool-master` containing the program on your Desktop.
+5. Locate the damaged audio files. If you used Logic, these will be located near your project file in a folder named `Media/Audio Files`. If you saved your project to a `.logicx` container, the contents can be shown in Finder by right-clicking the `.logicx` file and choosing _Show Package Contents_.
+6. Create a folder named `audio` on your Desktop and copy the damaged audio files into that folder. 
+7. Open a terminal application. Depending on your operating system, it is called **Command Line**, **Terminal** or similar.
+8. Each terminal has a so called **working directory**, which is the file system context for executed programs. Typically, the terminal starts in your user directory. On Windows, this might be something like `C:\Users\homersimpson`, on Unix-based/Mac systems it is something like `/Users/homersimpson`. This directory is sometimes abbreviated as `~`. When a terminal is started, the current working directory is usually your user directory. Enter the command `cd Desktop` and hit enter to make `Desktop` your working directory. Hint: you can usually use the TAB key to auto-complete the folder names.
+9. Analyze the audio files in your `audio` folder by entering one of the following commands: on Windows, use `python wave-recovery-tool-master\waverecovery.py audio`; on Unix-based/Mac systems, use `python3 wave-recovery-tool-master/waverecovery.py audio`. If it works, you see header information for the files in your audio folder. Check the next section if you encounter problems.
+10. In case you see any header errors (prefixed with [ERROR]) in the output of step 9, you can try to fix the problems with the following command: on Windows, use `python wave-recovery-tool-master\waverecovery.py -r audio restored`; on Unix systems, use `python3 -r wave-recovery-tool-master/waverecovery.py audio restored`. This will create folder named `restored` on your Desktop and try to restore the audio files from the folder `audio` into the `restored` folder.
+11. Check the results in the `restored` folder on your Desktop. *Start playback with low loudness levels*. If the sounds are distorted, further parameters (namely the sample rate, number of channels and bit rate you used during recording) need to specified. See section _Restoring Damaged WAVE/AIFF File Headers_ for more details.
 
-```
-usage: waverecovery.py [-h] [-r] [-s SAMPLE_RATE] [-b BITS_PER_SAMPLE]
-                       [-c CHANNELS] [-v] [-V]
-                       source_path [destination_path]
-```
-
-If you see this, you can continue in the next section and add parameters for your files after `waverecovery.py`.
-
+### Locating Python 3
+ 
 In case you get an error message like `command not found`, you must replace `python` or `python3` with the absolute path to your python executable. On Windows, the command line looks like this:
 
 ```
@@ -53,24 +49,26 @@ Note that you have to add quotes around the python path if it contains spaces (l
 /usr/local/bin/python3 waverecovery.py
 ```
 
-Of course, you have to replace the paths with the actual paths on your system where Python3 was installed.
+Of course, you have to replace the python executable paths with the actual paths on your system where Python3 was installed (in step 1 of the step-by-step instructions).
 
 ## Usage
 
 The tool provides two functionalities:
 
-1. Displaying wave file header information
-2. Restoring corrupted wave file headers
+1. Displaying WAVE/AIFF file header information
+2. Restoring corrupted WAVE/AIFF file headers
+
+For all commands below, `python3` is assumed to be in the system's executable `PATH`. If your system reports that `python3` can not be found, its containing directory must either be added to the `PATH` variable or `python3` must be replaced with the absolute path to the Python 3 interpreter. The command `python3` must be replaced with `python` on some Windows systems.
 
 ### Displaying Header File Information
 
-To display header information for a specific wave file, invoke the tool as follows:
+To display header information for a specific audio file, invoke the tool as follows:
 
 ```
 python3 waverecovery.py /path/to/file.wav
 ```
 
-The tool can also display wave header information for all files contained in a directory:
+The tool can also display audio header information for all files contained in a directory:
 
 ```
 python3 waverecovery.py /path/to/directory
@@ -95,22 +93,20 @@ Data Subchunk Size: 3425301
 [WARNING] Data subchunk size does not match file size. Should be 3435047, but is: 3425301 (difference: 9746)
 ```
 
-### Restoring Damaged Wave File Headers
+### Restoring Damaged WAVE/AIFF File Headers
 
-This tool is capable of restoring damaged wave files under the following conditions:
+This tool is capable of restoring damaged WAVE/AIFF files under the following conditions:
 
-- The wave file header (stored in the first 44 bytes of wave files) is damaged or contains errors
-- The raw audio data is still stored in the file starting at byte 45 
+- The audio file header is damaged or contains errors
+- The raw audio data is still stored in the file after the damaged header 
 
-The tool will write a valid wave file header and append the available raw audio data.
+The tool will write a valid WAVE/AIFF file header and append the available raw audio data.
 To restore damaged wave files, supply the `--restore` (short: `-r`) option along with a source and destination path. Source and destination path can either be:
 
 - A source file and a destination file or
 - A source directory and a destination directory
 
-In the second case, the source directory will be scanned for wave files and the restored versions of the files will be saved in the destination folder.
-
-Note that if corresponding files already exist in the destination path, these will not be overwritten for safety reasons. In case you want files to be overwritten, you have to delete the destination folder manually.
+In the second case, the source directory will be scanned for audio files and the restored versions of the files will be saved in the destination folder.
 
 If no further parameters are supplied, the following defaults are assumed:
 
@@ -125,7 +121,9 @@ These values can be changed with the following parameters:
 - Number of Channels: `-c` or `--channels`
 
 
-Examples are provided below:
+Examples are provided below.
+
+### Examples
 
 Restore wave files with 44 kHz sample rate, 16 bits per sample, Mono:
 
@@ -153,4 +151,4 @@ python3 waverecovery.py -r -s 96000 -b 24 -c 2 /path/to/directory/containing/wav
 
 ## Donations
 
-If this wave recovery tool helped you to restore your damaged wave files, I would appreciate a donation at <https://www.paypal.me/davehofmanndev>. Thank you very much! 
+If this wave recovery tool helped you to restore your damaged audio files, I would appreciate a donation at <https://www.paypal.me/davehofmanndev>. Thank you very much! 
