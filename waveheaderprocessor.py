@@ -285,7 +285,7 @@ class WaveHeaderProcessor():
         elif chunk_name_bytes == b'SSND':
             return self.analyze_ssnd_chunk(chunk_size, aiff_file, display)
         else:
-            print_with_condition(display, "Skipping {} chunk.".format(chunk_name_bytes.decode("utf-8")))
+            print_with_condition(display, "Skipping {} chunk (size: {}).".format(chunk_name_bytes.decode("utf-8"), chunk_size))
             aiff_file.seek(chunk_size, 1) # skip chunk and set file position to next chunk
             
         return False
@@ -408,7 +408,7 @@ class WaveHeaderProcessor():
         return found_error
         
     def analyze_ssnd_chunk(self, chunk_size, aiff_file, display):
-        print_with_condition(display, "Reading SSND chunk.")
+        print_with_condition(display, "Reading SSND chunk (size: {}).".format(chunk_size))
         offset_bytes = aiff_file.read(4)
         offset = struct.unpack(">I", offset_bytes)[0]
         print_with_condition(display, "Offset: {}".format(offset))
@@ -568,6 +568,17 @@ class WaveHeaderProcessor():
                     chunk_size_bytes = chunk_header[4:8]
                     chunk_size = struct.unpack(">I", chunk_size_bytes)[0]
                     
+                    if chunk_name_bytes == b"\x00\x00\x00\x00":
+                        # headers seems to be destroyed completely
+                        # write a default Logic-style header
+                        self.write_aiff_headers(aiff_file, sample_rate, bits_per_sample, num_channels, num_bytes)
+                        comm_chunk_written = True
+                        ssnd_chunk_written = True
+                        # assume audio data starts at byte 512
+                        source_aiff_file.seek(512)
+                        self.copy_audio_data(source_aiff_file, aiff_file)
+                        return True
+                    
                     if chunk_size == 0:
                         raise RuntimeError("Invalid chunk size (0) for chunk with name '{}'".format(chunk_header.decode("utf-8")))
                     
@@ -595,6 +606,51 @@ class WaveHeaderProcessor():
                 return False
         
         return True
+    
+    def write_aiff_headers(self, aiff_file, sample_rate, bits_per_sample, num_channels, num_bytes):
+        self.write_comt_chunk(aiff_file)
+        self.write_comm_chunk(aiff_file, sample_rate, bits_per_sample, num_channels, num_bytes)
+        self.write_chan_chunk(aiff_file)
+        self.write_ssnd_chunk(aiff_file, num_bytes)
+        
+    def write_comt_chunk(self, aiff_file):
+        print("Writing COMT chunk.")
+        
+        aiff_file.write(b"COMT")
+        aiff_file.write(struct.pack(">I", 410))
+        comment = b"This AIFF file was restored using Wave Recovery Tool developed by David Hofmann. Visit https://github.com/davehofmann/wave-recovery-tool for more information."
+        aiff_file.write(comment)
+        aiff_file.write(b"\x00" * (410-len(comment)))
+        
+    def write_comm_chunk(self, aiff_file, sample_rate, bits_per_sample, num_channels, num_bytes):
+        print("Writing COMM chunk.")
+        
+        num_frames = (num_bytes-8-410-32)//(bits_per_sample//8) # TODO: check formula
+            
+        aiff_file.write(b"COMM")
+        aiff_file.write(struct.pack(">I", 18)) # COMM chunk size
+        aiff_file.write(struct.pack(">H", num_channels)) # number of channels
+        aiff_file.write(struct.pack(">I", num_frames))
+        aiff_file.write(struct.pack(">H", bits_per_sample)) # bits per sample
+        aiff_file.write(self.encode_float80(sample_rate)) # sample rate
+        
+    def write_chan_chunk(self, aiff_file):
+        print("Writing CHAN chunk.")
+        
+        aiff_file.write(b"CHAN")
+        # TODO: find spec for CHAN chunk
+        aiff_file.write(b"\x00\x00\x00\x20\x00\x64\x00\x01\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00")
+        
+    def write_ssnd_chunk(self, aiff_file, num_bytes):
+        print("Writing SSND chunk.")
+        
+        aiff_file.write(b"SSND")
+        ssnd_chunk_size = num_bytes - 2184 # TODO: check formula
+        aiff_file.write(struct.pack(">I", ssnd_chunk_size))
+        aiff_file.write(struct.pack(">I", 0)) # offset
+        aiff_file.write(struct.pack(">I", 0)) # block size
+        
+        
     
     def repair_aiff_chunk(self, source_aiff_file, aiff_file, chunk_name_bytes, chunk_size, sample_rate, bits_per_sample, num_channels, num_bytes):
         if chunk_name_bytes == b'COMM':
@@ -635,16 +691,21 @@ class WaveHeaderProcessor():
         aiff_file.write(b"SSND")
         ssnd_chunk_size = num_bytes - source_aiff_file.tell()
         aiff_file.write(struct.pack("<I", ssnd_chunk_size)) # data chunk size (raw audio data size)
+        # offset and block size are copied from the source file
         #aiff_file.write(struct.pack(">I", 0)) # offset
         #aiff_file.write(struct.pack(">I", 0)) # block size
+        
+        self.copy_audio_data(source_aiff_file, aiff_file)
+        
+    def copy_audio_data(self, source_aiff_file, aiff_file):
+        print("Copying audio data...")
         
         while True:
             buffer = source_aiff_file.read(2048)
             if buffer:
                 aiff_file.write(buffer)
             else:
-                break    
-            
+                break
             
         
     
