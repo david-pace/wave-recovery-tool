@@ -265,6 +265,12 @@ class WaveHeaderProcessor():
             while aiff_file.tell() < num_bytes:
                 chunk_header = aiff_file.read(8)
                 chunk_name_bytes = chunk_header[:4]
+                
+                if not self.is_valid_chunk_name(chunk_name_bytes):
+                    found_error = True
+                    error_with_condition(display, "Invalid (non-printable) chunk name encountered (byte sequence {}). Aborting analysis.".format(chunk_name_bytes))
+                    break
+                    
                 chunk_size_bytes = chunk_header[4:8]
                 chunk_size = struct.unpack(">I", chunk_size_bytes)[0]
                 
@@ -464,9 +470,13 @@ class WaveHeaderProcessor():
                 is_aiff_file = self.is_aiff_file(full_path)
                 if is_wave_file or is_aiff_file:
                     found_error = False
+                    
+                    # we print an analysis notification here because nothing is displayed during analysis due the display=False flag
                     if is_wave_file:
+                        print("Analyzing WAVE file {}".format(full_path))
                         found_error = self.analyze_wave_header(full_path, False)
                     else:
+                        print("Analyzing AIFF file {}".format(full_path))
                         found_error = self.analyze_aiff_header(full_path, False)
                         
                     if found_error:
@@ -543,6 +553,13 @@ class WaveHeaderProcessor():
         
         return True
     
+    def is_valid_chunk_name(self, chunk_name_bytes):
+        try:
+            chunk_name_bytes.decode("utf-8")
+            return True
+        except UnicodeDecodeError:
+            return False
+    
     def repair_aiff_file_header(self, source_path, destination_path, sample_rate, bits_per_sample, num_channels):
         print("Restoring AIFF header in source file {}, storing result file in {}".format(source_path, destination_path))
         print("Writing AIFF file header with sample rate {} Hz, {} bits per sample, {} audio channels...".format(sample_rate, bits_per_sample, num_channels))
@@ -568,9 +585,10 @@ class WaveHeaderProcessor():
                     chunk_size_bytes = chunk_header[4:8]
                     chunk_size = struct.unpack(">I", chunk_size_bytes)[0]
                     
-                    if chunk_name_bytes == b"\x00\x00\x00\x00":
-                        # headers seems to be destroyed completely
-                        # write a default Logic-style header
+                    valid_chunk_name = self.is_valid_chunk_name(chunk_name_bytes)
+                    
+                    if not valid_chunk_name or chunk_name_bytes == b"\x00\x00\x00\x00":
+                        print("AIFF header is destroyed completely. Writing a default Logic-style AIFF header...")
                         self.write_aiff_headers(aiff_file, sample_rate, bits_per_sample, num_channels, num_bytes)
                         comm_chunk_written = True
                         ssnd_chunk_written = True
@@ -580,7 +598,7 @@ class WaveHeaderProcessor():
                         return True
                     
                     if chunk_size == 0:
-                        raise RuntimeError("Invalid chunk size (0) for chunk with name '{}'".format(chunk_header.decode("utf-8")))
+                        raise RuntimeError("Invalid chunk size (0) for chunk with name '{}'".format(chunk_name_bytes.decode("utf-8")))
                     
                     current_position = source_aiff_file.tell()
                     
