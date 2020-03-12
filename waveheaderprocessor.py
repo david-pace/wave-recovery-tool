@@ -82,7 +82,7 @@ class WaveHeaderProcessor():
     
     def is_aiff_file(self, file):
         extension = os.path.splitext(file)[-1].lower()
-        return extension == ".aif" or extension == ".aiff"
+        return extension == ".aif" or extension == ".aiff" or extension == ".aifc"
     
     """
     Displays information about the wave file header of the given file.
@@ -218,11 +218,11 @@ class WaveHeaderProcessor():
         return found_error
     
     """
-    Displays information about the WAVE file header of the given file.
+    Displays information about the AIFF/AIFC file header of the given file.
     Returns a boolean indicating whether the header has errors.
     
     Args:
-        path: path to the WAVE file to analyze
+        path: path to the AIFF/AIFC file to analyze
         display: flag indicating whether analysis output should be displayed (True) or whether the method is just used for analysis (False)
     """
     def analyze_aiff_header(self, path, display=True):
@@ -232,24 +232,24 @@ class WaveHeaderProcessor():
         file_name = os.path.basename(path)
         num_bytes = os.path.getsize(path)
         
-        print_with_condition(display, "Displaying AIFF File Header Data for File {}".format(file_name))
+        print_with_condition(display, "Displaying AIFF/AIFC File Header Data for File {}".format(file_name))
         print_with_condition(display, "Number of Bytes: {}".format(num_bytes))
         
         if num_bytes < 12:
-            print_with_condition(display, "File is only {} bytes long and therefore can not contain an AIFF header.".format(num_bytes))
+            print_with_condition(display, "File is only {} bytes long and therefore can not contain an AIFF/AIFC header.".format(num_bytes))
             found_error = True
         
-        print_with_condition(display, "Reading AIFF Header...")
+        print_with_condition(display, "Reading AIFF/AIFC Header...")
         with open(path, "rb") as aiff_file:
-            header_bytes = aiff_file.read(12)
+            form_chunk_bytes = aiff_file.read(12)
             
-            #print_with_condition(display, "Header contains the following bytes (hexadecimal): {}".format(byte_string_to_hex(header_bytes)))
+            #print_with_condition(display, "Header contains the following bytes (hexadecimal): {}".format(byte_string_to_hex(form_chunk_bytes)))
                 
-            if header_bytes[:4] != b"FORM":
-                error_with_condition(display, "File does not start with 'FORM' and therefore does not contain a correct AIFF file header.".format(file_name))
+            if form_chunk_bytes[:4] != b"FORM":
+                error_with_condition(display, "File does not start with 'FORM' and therefore does not contain a correct AIFF/AIFC file header.".format(file_name))
                 found_error = True
                 
-            chunk_size_bytes = header_bytes[4:8]
+            chunk_size_bytes = form_chunk_bytes[4:8]
             chunk_size = struct.unpack(">I", chunk_size_bytes)[0]
             
             print_with_condition(display, "Chunk Size: {}".format(chunk_size))
@@ -258,15 +258,24 @@ class WaveHeaderProcessor():
             if chunk_size != expected_chunk_size:
                 warning_with_condition(display, "Chunk size does not match file size. Should be equal to total number of bytes - 8 = {}, but was: {} (difference: {})".format(expected_chunk_size, chunk_size, abs(expected_chunk_size-chunk_size)))
             
-            if header_bytes[8:12] != b"AIFF":
-                error_with_condition(display, "Bytes 8-12 do not contain 'AIFF'")
+            format_name_bytes = form_chunk_bytes[8:12]
+            if self.is_decodable(format_name_bytes):
+                print_with_condition(display, "Format: {}".format(self.decode_bytes(format_name_bytes)))
+            else:
+                error_with_condition(display, "Invalid (non-printable) format name encountered (byte sequence {}).".format(format_name_bytes))
+                found_error = True
+                
+            is_aiff = format_name_bytes == b"AIFF"
+            is_aifc = format_name_bytes == b"AIFC"
+            if not (is_aifc or is_aiff):
+                error_with_condition(display, "Bytes 8-12 do neither contain 'AIFF' nor 'AIFC'")
                 found_error = True
             
             while aiff_file.tell() < num_bytes:
                 chunk_header = aiff_file.read(8)
                 chunk_name_bytes = chunk_header[:4]
                 
-                if not self.is_valid_chunk_name(chunk_name_bytes):
+                if not self.is_decodable(chunk_name_bytes):
                     found_error = True
                     error_with_condition(display, "Invalid (non-printable) chunk name encountered (byte sequence {}). Aborting analysis.".format(chunk_name_bytes))
                     break
@@ -276,7 +285,7 @@ class WaveHeaderProcessor():
                 
                 current_position = aiff_file.tell()
                 
-                if self.analyze_aiff_chunk(chunk_name_bytes, chunk_size, aiff_file, display):
+                if self.analyze_aiff_chunk(chunk_name_bytes, chunk_size, aiff_file, display, is_aifc):
                     found_error = True
                     
                 if aiff_file.tell() == current_position:
@@ -285,13 +294,13 @@ class WaveHeaderProcessor():
                 
         return found_error
     
-    def analyze_aiff_chunk(self, chunk_name_bytes, chunk_size, aiff_file, display):
+    def analyze_aiff_chunk(self, chunk_name_bytes, chunk_size, aiff_file, display, is_aifc):
         if chunk_name_bytes == b'COMM':
-            return self.analyze_comm_chunk(chunk_size, aiff_file, display)
+            return self.analyze_comm_chunk(chunk_size, aiff_file, display, is_aifc)
         elif chunk_name_bytes == b'SSND':
             return self.analyze_ssnd_chunk(chunk_size, aiff_file, display)
         else:
-            print_with_condition(display, "Skipping {} chunk (size: {}).".format(chunk_name_bytes.decode("utf-8"), chunk_size))
+            print_with_condition(display, "Skipping {} chunk (size: {}).".format(self.decode_bytes(chunk_name_bytes), chunk_size))
             aiff_file.seek(chunk_size, 1) # skip chunk and set file position to next chunk
             
         return False
@@ -374,28 +383,38 @@ class WaveHeaderProcessor():
             raise RuntimeError("Encoding of number {} not implemented yet.".format(number))
         
 
-    def analyze_comm_chunk(self, chunk_size, aiff_file, display):
+    def analyze_comm_chunk(self, chunk_size, aiff_file, display, is_aifc):
         found_error = False
-        print_with_condition(display, "Reading COMM chunk.")
-        if chunk_size != 18:
-            error_with_condition(display, "Expected chunk size of COMM chunk is 18, but was: {}".format(chunk_size))
-            found_error = True
+        print_with_condition(display, "Reading COMM chunk (size: {})".format(chunk_size))
+        comm_chunk_bytes = aiff_file.read(chunk_size)
         
-        num_channel_bytes = aiff_file.read(2)
+        if is_aifc:
+            # AIFC file
+            if chunk_size < 22:
+                error_with_condition(display, "Expected chunk size of COMM chunk to be at least 22, but was: {}".format(chunk_size))
+                found_error = True
+        else:
+            # AIFF file
+            if chunk_size != 18:
+                error_with_condition(display, "Expected chunk size of COMM chunk to be 18, but was: {}".format(chunk_size))
+                found_error = True
+            
+        
+        num_channel_bytes = comm_chunk_bytes[:2]
         num_channels = struct.unpack(">H", num_channel_bytes)[0]
         print_with_condition(display, "Number of Channels: {}".format(num_channels))
         if num_channels < 1:
             error_with_condition(display, "Number of channels in invalid.")
             found_error = True
             
-        num_frames_bytes = aiff_file.read(4)
+        num_frames_bytes = comm_chunk_bytes[2:6]
         num_frames = struct.unpack(">I", num_frames_bytes)[0]
         print_with_condition(display, "Number of Frames: {}".format(num_frames))
         if num_channels < 1:
             error_with_condition(display, "Number of frames in invalid.")
             found_error = True
             
-        bits_per_sample_bytes = aiff_file.read(2)
+        bits_per_sample_bytes = comm_chunk_bytes[6:8]
         bits_per_sample = struct.unpack(">H", bits_per_sample_bytes)[0]
         
         print_with_condition(display, "Bits per Sample: {}".format(bits_per_sample))
@@ -403,13 +422,24 @@ class WaveHeaderProcessor():
             error_with_condition(display, "Bits per sample value is invalid.")
             found_error = True
             
-        sample_rate_bytes = aiff_file.read(10)
+        sample_rate_bytes = comm_chunk_bytes[8:18]
         sample_rate = self.decode_float80(sample_rate_bytes) 
         
         print_with_condition(display, "Sample Rate: {}".format(sample_rate))
         if sample_rate < 1:
             error_with_condition(display, "Sample rate is invalid.")
             found_error = True
+            
+        if is_aifc:
+            # compression type and compression name are only available in AIFF-C
+            if chunk_size >= 22:
+                compression_type_bytes = comm_chunk_bytes[18:22]
+                if self.is_decodable(compression_type_bytes):
+                    print_with_condition(display, "Compression Type: {}".format(self.decode_bytes(compression_type_bytes)))
+            if chunk_size > 22:
+                compression_name_bytes = comm_chunk_bytes[22:]
+                if self.is_decodable(compression_name_bytes):
+                    print_with_condition(display, "Compression Name: {}".format(self.decode_bytes(compression_name_bytes)))
             
         return found_error
         
@@ -553,16 +583,19 @@ class WaveHeaderProcessor():
         
         return True
     
-    def is_valid_chunk_name(self, chunk_name_bytes):
+    def is_decodable(self, byte_string):
         try:
-            chunk_name_bytes.decode("utf-8")
+            self.decode_bytes(byte_string)
             return True
         except UnicodeDecodeError:
             return False
     
+    def decode_bytes(self, byte_string):
+        return byte_string.decode("utf-8")
+
     def repair_aiff_file_header(self, source_path, destination_path, sample_rate, bits_per_sample, num_channels):
-        print("Restoring AIFF header in source file {}, storing result file in {}".format(source_path, destination_path))
-        print("Writing AIFF file header with sample rate {} Hz, {} bits per sample, {} audio channels...".format(sample_rate, bits_per_sample, num_channels))
+        print("Restoring AIFF/AIFC header in source file {}, storing result file in {}".format(source_path, destination_path))
+        print("Writing AIFF/AIFC file header with sample rate {} Hz, {} bits per sample, {} audio channels...".format(sample_rate, bits_per_sample, num_channels))
         num_bytes = os.path.getsize(source_path)
         
         form_chunk_size = num_bytes-8
@@ -571,24 +604,29 @@ class WaveHeaderProcessor():
         
         try:
             with open(source_path, "rb") as source_aiff_file, open(destination_path, "wb") as aiff_file:
+                
                 aiff_file.write(b"FORM")
                 aiff_file.write(struct.pack(">I", form_chunk_size)) # chunk size = total byte size - 8
-                aiff_file.write(b"AIFF")
+                
+                source_form_chunk_bytes = source_aiff_file.read(12)
+                if source_form_chunk_bytes[8:12] == b"AIFC":
+                    aiff_file.write(b"AIFC")
+                else:
+                    aiff_file.write(b"AIFF")
                 
                 comm_chunk_written = False
                 ssnd_chunk_written = False
                 
-                source_aiff_file.seek(12)
                 while source_aiff_file.tell() < num_bytes:
                     chunk_header = source_aiff_file.read(8)
                     chunk_name_bytes = chunk_header[:4]
                     chunk_size_bytes = chunk_header[4:8]
                     chunk_size = struct.unpack(">I", chunk_size_bytes)[0]
                     
-                    valid_chunk_name = self.is_valid_chunk_name(chunk_name_bytes)
+                    valid_chunk_name = self.is_decodable(chunk_name_bytes)
                     
                     if not valid_chunk_name or chunk_name_bytes == b"\x00\x00\x00\x00":
-                        print("AIFF header is destroyed completely. Writing a default Logic-style AIFF header...")
+                        print("AIFF/AIFC header is destroyed completely. Writing a default Logic-style AIFF header...")
                         self.write_aiff_headers(aiff_file, sample_rate, bits_per_sample, num_channels, num_bytes)
                         comm_chunk_written = True
                         ssnd_chunk_written = True
@@ -598,7 +636,7 @@ class WaveHeaderProcessor():
                         return True
                     
                     if chunk_size == 0:
-                        raise RuntimeError("Invalid chunk size (0) for chunk with name '{}'".format(chunk_name_bytes.decode("utf-8")))
+                        raise RuntimeError("Invalid chunk size (0) for chunk with name '{}'".format(self.decode_bytes(chunk_name_bytes)))
                     
                     current_position = source_aiff_file.tell()
                     
@@ -676,7 +714,7 @@ class WaveHeaderProcessor():
         elif chunk_name_bytes == b'SSND':
             self.repair_ssnd_chunk(source_aiff_file, aiff_file, num_bytes)
         else:
-            print("Copying {} chunk.".format(chunk_name_bytes.decode("utf-8")))
+            print("Copying {} chunk.".format(self.decode_bytes(chunk_name_bytes)))
             aiff_file.write(chunk_name_bytes)
             aiff_file.write(struct.pack(">I", chunk_size))
             buffer = source_aiff_file.read(chunk_size)
@@ -686,21 +724,21 @@ class WaveHeaderProcessor():
         
         print("Repairing COMM chunk.")
         
-        # skip num channel bytes
-        source_aiff_file.seek(2, 1)
+        source_comm_chunk_bytes = source_aiff_file.read(chunk_size)
+        
+        aiff_file.write(b"COMM")
+        aiff_file.write(struct.pack(">I", chunk_size)) # COMM chunk size
+        aiff_file.write(struct.pack(">H", num_channels)) # number of channels
         
         # read number of frames from source file
-        num_frames_bytes = source_aiff_file.read(4)
+        num_frames_bytes = source_comm_chunk_bytes[2:6]
         num_frames = struct.unpack(">I", num_frames_bytes)[0]
-        
-        source_aiff_file.seek(chunk_size-6, 1)
             
-        aiff_file.write(b"COMM")
-        aiff_file.write(struct.pack(">I", 18)) # COMM chunk size
-        aiff_file.write(struct.pack(">H", num_channels)) # number of channels
         aiff_file.write(struct.pack(">I", num_frames))
         aiff_file.write(struct.pack(">H", bits_per_sample)) # bits per sample
         aiff_file.write(self.encode_float80(sample_rate)) # sample rate
+        
+        aiff_file.write(source_comm_chunk_bytes[18:])
         
     
     def repair_ssnd_chunk(self, source_aiff_file, aiff_file, num_bytes):
@@ -708,7 +746,7 @@ class WaveHeaderProcessor():
         
         aiff_file.write(b"SSND")
         ssnd_chunk_size = num_bytes - source_aiff_file.tell()
-        aiff_file.write(struct.pack("<I", ssnd_chunk_size)) # data chunk size (raw audio data size)
+        aiff_file.write(struct.pack(">I", ssnd_chunk_size)) # data chunk size (raw audio data size)
         # offset and block size are copied from the source file
         #aiff_file.write(struct.pack(">I", 0)) # offset
         #aiff_file.write(struct.pack(">I", 0)) # block size
@@ -719,7 +757,7 @@ class WaveHeaderProcessor():
         print("Copying audio data...")
         
         while True:
-            buffer = source_aiff_file.read(2048)
+            buffer = source_aiff_file.read(4096)
             if buffer:
                 aiff_file.write(buffer)
             else:
