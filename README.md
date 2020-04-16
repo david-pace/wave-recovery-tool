@@ -16,7 +16,7 @@ Wave Recovery Tool is developed by David Hofmann &lt;dev@davehofmann.de&gt;
 
 To use the wave recovery tool, a [Python 3](https://www.python.org/downloads/) installation is required.
 
-This tool is capable of reconstructing damaged WAVE and AIFF headers. This will only work if the raw audio data is still in the file, i.e. the file has a reasonable file size in respect to the duration of the recorded audio material (usually several megabytes). In a typical scenario where recovery is possible, one of the following things happen when you try to play the audio file:
+This tool is capable of reconstructing damaged WAVE and AIFF headers. This will only work if the raw audio data is still in the file, i.e. the file has a reasonable file size in respect to the duration of the recorded audio material (usually several megabytes). In a typical scenario where recovery is possible, one of the following happens when you try to play the audio file:
 
 * Logic displays the error `One or more audio files changed in length.`
 * Audio players (like VLC, Audacity, Windows Media Player, QuickTime, iTunes) display errors
@@ -40,9 +40,8 @@ This tool is capable of reconstructing damaged WAVE and AIFF headers. This will 
 11. In case you see any header errors (prefixed with [ERROR]) in the output of step 9, you can try to fix the files. For that, you simply have to add `-r` before `audio` and add a destination folder (we will call it `restored`) after audio. The resulting command lines look like this:
     * Windows: `python wave-recovery-tool-master\waverecovery.py -r audio restored`
     * Unix/Mac: `python3 wave-recovery-tool-master/waverecovery.py -r audio restored`
-12. The command from step 11 will create a folder named `restored` on your Desktop and try to restore the audio files from the folder `audio` into the `restored` folder. Check if the folder was created and whether it contains files.
-13. Check the results in the `restored` folder on your Desktop. **Start playback with low loudness levels**.
-14. If the sound is distorted or you hear nothing, you have to repeat from step 11, but this time add other parameters (namely the sample rate, number of channels and/or bit rate you used during recording). Examples:
+12. The command from step 11 will create a folder named `restored` on your Desktop and try to restore the audio files from the folder `audio` into the `restored` folder. Check if the folder was created and whether it contains files. Try playing back the files **with a low loudness/volume level**, as they might be distorted.
+13. If the sound is distorted or you hear nothing, you have to repeat from step 11, but this time add other parameters (namely the sample rate, number of channels and/or bit rate you used during recording). Examples:
     * If the files were recorded with a bit depth of 24 bits then you have to add `-b 24` before `audio`.
     * If you used a sample rate of 48 kHz, you have to add `-s 48000` before `audio`.
     * If the files have two channels (i.e. stereo instead of mono), then you have to add `-c 2` before `audio`.
