@@ -218,11 +218,11 @@ class WaveHeaderProcessor():
         return found_error
     
     """
-    Displays information about the AIFF/AIFC file header of the given file.
+    Displays information about the AIFF file header of the given file.
     Returns a boolean indicating whether the header has errors.
     
     Args:
-        path: path to the AIFF/AIFC file to analyze
+        path: path to the AIFF file to analyze
         display: flag indicating whether analysis output should be displayed (True) or whether the method is just used for analysis (False)
     """
     def analyze_aiff_header(self, path, display=True):
@@ -232,21 +232,21 @@ class WaveHeaderProcessor():
         file_name = os.path.basename(path)
         num_bytes = os.path.getsize(path)
         
-        print_with_condition(display, "Displaying AIFF/AIFC File Header Data for File {}".format(file_name))
+        print_with_condition(display, "Displaying AIFF File Header Data for File {}".format(file_name))
         print_with_condition(display, "Number of Bytes: {}".format(num_bytes))
         
         if num_bytes < 12:
-            print_with_condition(display, "File is only {} bytes long and therefore can not contain an AIFF/AIFC header.".format(num_bytes))
+            print_with_condition(display, "File is only {} bytes long and therefore can not contain an AIFF header.".format(num_bytes))
             found_error = True
         
-        print_with_condition(display, "Reading AIFF/AIFC Header...")
+        print_with_condition(display, "Reading AIFF Header...")
         with open(path, "rb") as aiff_file:
             form_chunk_bytes = aiff_file.read(12)
             
             #print_with_condition(display, "Header contains the following bytes (hexadecimal): {}".format(byte_string_to_hex(form_chunk_bytes)))
                 
             if form_chunk_bytes[:4] != b"FORM":
-                error_with_condition(display, "File does not start with 'FORM' and therefore does not contain a correct AIFF/AIFC file header.".format(file_name))
+                error_with_condition(display, "File does not start with 'FORM' and therefore does not contain a correct AIFF file header.".format(file_name))
                 found_error = True
                 
             chunk_size_bytes = form_chunk_bytes[4:8]
@@ -594,8 +594,8 @@ class WaveHeaderProcessor():
         return byte_string.decode("utf-8")
 
     def repair_aiff_file_header(self, source_path, destination_path, sample_rate, bits_per_sample, num_channels):
-        print("Restoring AIFF/AIFC header in source file {}, storing result file in {}".format(source_path, destination_path))
-        print("Writing AIFF/AIFC file header with sample rate {} Hz, {} bits per sample, {} audio channels...".format(sample_rate, bits_per_sample, num_channels))
+        print("Restoring AIFF header in source file {}, storing result file in {}".format(source_path, destination_path))
+        print("Writing AIFF file header with sample rate {} Hz, {} bits per sample, {} audio channels...".format(sample_rate, bits_per_sample, num_channels))
         num_bytes = os.path.getsize(source_path)
         
         form_chunk_size = num_bytes-8
@@ -626,7 +626,7 @@ class WaveHeaderProcessor():
                     valid_chunk_name = self.is_decodable(chunk_name_bytes)
                     
                     if not valid_chunk_name or chunk_name_bytes == b"\x00\x00\x00\x00":
-                        print("AIFF/AIFC header is destroyed completely. Writing a default Logic-style AIFF header...")
+                        print("AIFF header is destroyed completely. Writing a default Logic-style AIFF header...")
                         self.write_aiff_headers(aiff_file, sample_rate, bits_per_sample, num_channels, num_bytes)
                         comm_chunk_written = True
                         ssnd_chunk_written = True
