@@ -18,7 +18,9 @@ To use the wave recovery tool, a [Python 3](https://www.python.org/downloads/) i
 
 This tool is capable of reconstructing damaged WAVE and AIFF headers. This will only work if the raw audio data is still in the file, i.e. the file has a reasonable file size in respect to the duration of the recorded audio material (usually several megabytes). In a typical scenario where recovery is possible, one of the following things happen when you try to play the audio file:
 
-* Audio players (like VLC or Audacity) display errors; Logic displays the error `One or more audio files changed in length.`
+* Logic displays the error `One or more audio files changed in length.`
+* Audio players (like VLC, Audacity, Windows Media Player, QuickTime, iTunes) display errors
+* You hear noise
 * You simply hear nothing
 
 ## Step by Step Instructions
@@ -31,25 +33,32 @@ This tool is capable of reconstructing damaged WAVE and AIFF headers. This will 
 6. Create a folder named `audio` on your Desktop and copy the damaged audio files into that folder. 
 7. Open a terminal application. Depending on your operating system, it is called **Command Line**, **Terminal** or similar.
 8. Each terminal has a so called **working directory**, which is the file system context for executed programs. Typically, the terminal starts in your user directory. On Windows, this might be something like `C:\Users\homersimpson`, on Unix-based/Mac systems it is something like `/Users/homersimpson`. This directory is sometimes abbreviated as `~`. When a terminal is started, the current working directory is usually your user directory. Enter the command `cd Desktop` and hit enter to make `Desktop` your working directory. Hint: you can usually use the TAB key to auto-complete the folder names.
-9. Analyze the audio files in your `audio` folder by entering one of the following commands: on Windows, use `python wave-recovery-tool-master\waverecovery.py audio`; on Unix-based/Mac systems, use `python3 wave-recovery-tool-master/waverecovery.py audio`. If it works, you see header information for the files in your audio folder. Check the next section if you encounter problems.
-10. In case you see any header errors (prefixed with [ERROR]) in the output of step 9, you can try to fix the problems with the following command: on Windows, use `python wave-recovery-tool-master\waverecovery.py -r audio restored`; on Unix systems, use `python3 wave-recovery-tool-master/waverecovery.py -r audio restored`. This will create folder named `restored` on your Desktop and try to restore the audio files from the folder `audio` into the `restored` folder.
-11. Check the results in the `restored` folder on your Desktop. *Start playback with low loudness levels*. If the sound is distorted, further parameters (namely the sample rate, number of channels and bit rate you used during recording) need to specified. See section _Restoring Damaged WAVE/AIFF File Headers_ for more details.
+9. Analyze the audio files in your `audio` folder by entering one of the following commands:
+    * On Windows, enter: `python wave-recovery-tool-master\waverecovery.py audio`
+    * On Unix-based/Mac systems, enter: `python3 wave-recovery-tool-master/waverecovery.py audio`.
+10. If it works, you see header information for the files in your audio folder. If you get an error like `command not found` or similar, try replacing `python` with `python3` and vice versa. If you still get the same error, refer to section *Locating Python 3* below.
+11. In case you see any header errors (prefixed with [ERROR]) in the output of step 9, you can try to fix the files. For that, you simply have to add `-r` before `audio` and add a destination folder (we will call it `restored`) after audio. The resulting command lines look like this:
+    * Windows: `python wave-recovery-tool-master\waverecovery.py -r audio restored`
+    * Unix/Mac: `python3 wave-recovery-tool-master/waverecovery.py -r audio restored`.
+12. The command from step 11 will create a folder named `restored` on your Desktop and try to restore the audio files from the folder `audio` into the `restored` folder. Check if the folder was created and whether it contains files.
+13. Check the results in the `restored` folder on your Desktop. **Start playback with low loudness levels**.
+14. If the sound is distorted or you can hear nothing, you have to repeat from step 11, but this time add other parameters (namely the sample rate, number of channels and/or bit rate you used during recording). For example, if the files were recorded with a bit depth of 24 bits then you have to add `-b 24` after `-r`. If you used a sample rate of 48 kHz, you have to add `-s 48000`. If the files have two channels (i.e. stereo instead of mono), then you have to add `-c 2`. See section _Restoring Damaged WAVE/AIFF File Headers_ for more details.
 
 ### Locating Python 3
  
-In case you get an error message like `command not found`, you must replace `python` or `python3` with the absolute path to your python executable. On Windows, the command line looks like this:
+In case you get an error message like `command not found` in step 9, you have to replace `python` or `python3` with the absolute path to your python executable. On Windows, the command line looks like this:
 
 ```
-"C:\Program Files\Python\Python37-32\python" waverecovery.py
+"C:\Program Files\Python\Python37-32\python" waverecovery.py audio
 ```
 
 Note that you have to add quotes around the python path if it contains spaces (like in `Program Files`). On Unix systems, the command like looks like:
 
 ```
-/usr/local/bin/python3 waverecovery.py
+/usr/local/bin/python3 waverecovery.py audio
 ```
 
-Of course, you have to replace the python executable paths with the actual paths on your system where Python3 was installed (in step 1 of the step-by-step instructions).
+Of course, you have to replace the python executable paths with the actual paths on your system where Python3 was installed (the path you remembered in step 1 of the step-by-step instructions).
 
 ## Usage
 
@@ -58,7 +67,7 @@ The tool provides two functionalities:
 1. Displaying WAVE/AIFF file header information
 2. Restoring corrupted WAVE/AIFF file headers
 
-For all commands below, `python3` is assumed to be in the system's executable `PATH`. If your system reports that `python3` can not be found, its containing directory must either be added to the `PATH` variable or `python3` must be replaced with the absolute path to the Python 3 interpreter. The command `python3` must be replaced with `python` on some Windows systems.
+For all commands below, `python3` is assumed to be in the system's executable `PATH`. If your system reports that `python3` can not be found, its containing directory must either be added to the `PATH` variable or `python3` must be replaced with the absolute path to the Python 3 interpreter. The command `python3` must be replaced with `python` on some Windows systems. Also refer to the previous section *Locating Python 3* if you encounter problems.
 
 ### Displaying Header File Information
 
@@ -123,30 +132,48 @@ These values can be changed with the following parameters:
 
 Examples are provided below.
 
-### Examples
+## Examples
 
-Restore wave files with 44 kHz sample rate, 16 bits per sample, Mono:
+Restore audio files with
 
-```
-python3 waverecovery.py -r /path/to/directory/containing/wavefiles /path/to/destination/directory
-```
-
-Restore wave files with 44 kHz sample rate, 24 bits per sample, Mono:
+- 44 kHz sample rate
+- 16 bits per sample
+- 1 channel (Mono)
 
 ```
-python3 waverecovery.py -r -b 24 /path/to/directory/containing/wavefiles /path/to/destination/directory
+python3 waverecovery.py -r audio restored
 ```
 
-Restore wave files with 96 kHz sample rate, 24 bits per sample, Mono:
+Restore audio files with
+
+- 44 kHz sample rate
+- 24 bits per sample
+- 1 channel (Mono)
 
 ```
-python3 waverecovery.py -r -s 96000 -b 24 /path/to/directory/containing/wavefiles /path/to/destination/directory
+python3 waverecovery.py -r -b 24 audio restored
 ```
 
-Restore wave files with 96 kHz sample rate, 24 bits per sample, Stereo:
+Restore audio files with
+
+- 96 kHz sample rate
+- 24 bits per sample
+- 1 channel (Mono)
+
 
 ```
-python3 waverecovery.py -r -s 96000 -b 24 -c 2 /path/to/directory/containing/wavefiles /path/to/destination/directory
+python3 waverecovery.py -r -s 96000 -b 24 audio restored
+```
+
+Restore audio files with
+
+- 96 kHz sample rate
+- 24 bits per sample
+- 2 channels (Stereo)
+
+
+```
+python3 waverecovery.py -r -s 96000 -b 24 -c 2 audio restored
 ```
 
 ## Donations
