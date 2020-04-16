@@ -35,14 +35,18 @@ This tool is capable of reconstructing damaged WAVE and AIFF headers. This will 
 8. Each terminal has a so called **working directory**, which is the file system context for executed programs. Typically, the terminal starts in your user directory. On Windows, this might be something like `C:\Users\homersimpson`, on Unix-based/Mac systems it is something like `/Users/homersimpson`. This directory is sometimes abbreviated as `~`. When a terminal is started, the current working directory is usually your user directory. Enter the command `cd Desktop` and hit enter to make `Desktop` your working directory. Hint: you can usually use the TAB key to auto-complete the folder names.
 9. Analyze the audio files in your `audio` folder by entering one of the following commands:
     * On Windows, enter: `python wave-recovery-tool-master\waverecovery.py audio`
-    * On Unix-based/Mac systems, enter: `python3 wave-recovery-tool-master/waverecovery.py audio`.
+    * On Unix-based/Mac systems, enter: `python3 wave-recovery-tool-master/waverecovery.py audio`
 10. If it works, you see header information for the files in your audio folder. If you get an error like `command not found` or similar, try replacing `python` with `python3` and vice versa. If you still get the same error, refer to section *Locating Python 3* below.
 11. In case you see any header errors (prefixed with [ERROR]) in the output of step 9, you can try to fix the files. For that, you simply have to add `-r` before `audio` and add a destination folder (we will call it `restored`) after audio. The resulting command lines look like this:
     * Windows: `python wave-recovery-tool-master\waverecovery.py -r audio restored`
-    * Unix/Mac: `python3 wave-recovery-tool-master/waverecovery.py -r audio restored`.
+    * Unix/Mac: `python3 wave-recovery-tool-master/waverecovery.py -r audio restored`
 12. The command from step 11 will create a folder named `restored` on your Desktop and try to restore the audio files from the folder `audio` into the `restored` folder. Check if the folder was created and whether it contains files.
 13. Check the results in the `restored` folder on your Desktop. **Start playback with low loudness levels**.
-14. If the sound is distorted or you can hear nothing, you have to repeat from step 11, but this time add other parameters (namely the sample rate, number of channels and/or bit rate you used during recording). For example, if the files were recorded with a bit depth of 24 bits then you have to add `-b 24` after `-r`. If you used a sample rate of 48 kHz, you have to add `-s 48000`. If the files have two channels (i.e. stereo instead of mono), then you have to add `-c 2`. See section _Restoring Damaged WAVE/AIFF File Headers_ for more details.
+14. If the sound is distorted or you hear nothing, you have to repeat from step 11, but this time add other parameters (namely the sample rate, number of channels and/or bit rate you used during recording). Examples:
+    * If the files were recorded with a bit depth of 24 bits then you have to add `-b 24` before `audio`.
+    * If you used a sample rate of 48 kHz, you have to add `-s 48000` before `audio`.
+    * If the files have two channels (i.e. stereo instead of mono), then you have to add `-c 2` before `audio`.
+    * See section _Restoring Damaged WAVE/AIFF File Headers_ for more details.
 
 ### Locating Python 3
  
