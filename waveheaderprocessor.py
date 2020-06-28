@@ -569,48 +569,116 @@ class WaveHeaderProcessor():
         num_bytes = os.path.getsize(source_path)
         
         chunk_size = num_bytes-8
-        data_chunk_size = num_bytes-44
-        
-        print("Computed chunk size: {} bytes, data chunk size: {} bytes".format(chunk_size, data_chunk_size))
         
         try:
-            with open(destination_path, "wb") as wave_file:
+            with open(source_path, "rb") as source_wave_file, open(destination_path, "wb") as wave_file:
+                
                 wave_file.write(b"RIFF")
                 wave_file.write(struct.pack("<I", chunk_size)) # chunk size = total byte size - 8
                 wave_file.write(b"WAVE")
-                wave_file.write(b"fmt ")
-                wave_file.write(struct.pack("<I", 16)) # subchunk 1 size
-                wave_file.write(struct.pack("<H", 1)) # audio format
-                wave_file.write(struct.pack("<H", num_channels)) # number of channels
-                wave_file.write(struct.pack("<I", sample_rate)) # sample rate
-                block_align = int(num_channels * bits_per_sample / 8)
-                byte_rate = sample_rate * block_align
-                wave_file.write(struct.pack("<I", byte_rate)) # byte rate
-                wave_file.write(struct.pack("<H", block_align)) # block align
-                wave_file.write(struct.pack("<H", bits_per_sample)) # bits per sample
-                wave_file.write(b"data")
-                wave_file.write(struct.pack("<I", data_chunk_size)) # data chunk size (raw audio data size)
                 
-                print("WAVE header written, copying audio data...")
+                source_riff_chunk_bytes = source_wave_file.read(12)
+                is_destroyed = source_riff_chunk_bytes[:4] != b"RIFF" or source_riff_chunk_bytes[8:12] != b"WAVE"
                 
-                with open(source_path, "rb") as source_wave_file:
-                    # read audio data after the header
-                    source_wave_file.seek(44)
-                    while True:
-                        buffer = source_wave_file.read(2048)
-                        if buffer:
-                            wave_file.write(buffer)
-                        else:
-                            break
+                fmt_chunk_written = False
+                data_chunk_written = False
+                
+                while source_wave_file.tell() < num_bytes:
+                    chunk_header = source_wave_file.read(8)
+                    chunk_name_bytes = chunk_header[:4]
+                    chunk_size_bytes = chunk_header[4:8]
+                    chunk_size = struct.unpack("<I", chunk_size_bytes)[0]
+                    
+                    valid_chunk_name = self.is_decodable(chunk_name_bytes)
+                    
+                    if is_destroyed or not valid_chunk_name or chunk_name_bytes == b"\x00\x00\x00\x00":
+                        print("WAVE header is destroyed completely. Writing a default Logic-style WAVE header...")
+                        self.write_default_wave_headers(wave_file, sample_rate, bits_per_sample, num_channels, num_bytes)
+                        fmt_chunk_written = True
+                        data_chunk_written = True
+                        # assume audio data starts at byte 44
+                        source_wave_file.seek(44)
+                        self.copy_audio_data(source_wave_file, wave_file)
+                        return True
+                    
+                    if chunk_size == 0:
+                        raise RuntimeError("Invalid chunk size (0) for chunk with name '{}'".format(self.decode_bytes(chunk_name_bytes)))
+                    
+                    current_position = source_wave_file.tell()
+                    
+                    self.repair_wave_chunk(source_wave_file, wave_file, chunk_name_bytes, chunk_size, sample_rate, bits_per_sample, num_channels, num_bytes)
+                        
+                    if source_wave_file.tell() == current_position:
+                        raise RuntimeError("No bytes consumed while processing '{}' chunk.".format(self.decode_bytes(chunk_name_bytes)))
+                    
+                    if chunk_name_bytes == b"fmt ":
+                        fmt_chunk_written = True
+                    elif chunk_name_bytes == b"data":
+                        data_chunk_written = True
                     
         except Exception:
             print_error("Error while writing WAVE file {}:".format(destination_path))
             traceback.print_exc()
             return False
         else:
-            print("WAVE file {} written successfully.".format(destination_path))
+            if fmt_chunk_written and data_chunk_written:
+                print("WAVE file {} written successfully.".format(destination_path))
+            else:
+                print("WAVE file could not be restored because the fmt and/or data chunks could not be located in the source file.")
+                return False            
         
         return True
+    
+    def write_default_wave_headers(self, wave_file, sample_rate, bits_per_sample, num_channels, num_bytes):
+        self.write_default_fmt_chunk(wave_file, sample_rate, bits_per_sample, num_channels)
+        self.write_default_data_chunk(wave_file, num_bytes)
+        
+    def write_default_fmt_chunk(self, wave_file, sample_rate, bits_per_sample, num_channels):
+        print("Writing default fmt chunk.")
+        wave_file.write(b"fmt ")
+        wave_file.write(struct.pack("<I", 16)) # fmt chunk size
+        wave_file.write(struct.pack("<H", 1)) # audio format
+        wave_file.write(struct.pack("<H", num_channels)) # number of channels
+        wave_file.write(struct.pack("<I", sample_rate)) # sample rate
+        block_align = int(num_channels * bits_per_sample / 8)
+        byte_rate = sample_rate * block_align
+        wave_file.write(struct.pack("<I", byte_rate)) # byte rate
+        wave_file.write(struct.pack("<H", block_align)) # block align
+        wave_file.write(struct.pack("<H", bits_per_sample)) # bits per sample
+        
+    def write_default_data_chunk(self, wave_file, num_bytes):
+        print("Writing default data chunk.")
+        wave_file.write(b"data")
+        
+        data_chunk_size = num_bytes-44
+        wave_file.write(struct.pack("<I", data_chunk_size)) # data chunk size (raw audio data size)   
+        
+    def repair_wave_chunk(self, source_wave_file, wave_file, chunk_name_bytes, chunk_size, sample_rate, bits_per_sample, num_channels, num_bytes):
+        if chunk_name_bytes == b'fmt ':
+            self.repair_fmt_chunk(source_wave_file, wave_file, chunk_size, sample_rate, bits_per_sample, num_channels)
+        elif chunk_name_bytes == b'data':
+            self.repair_data_chunk(source_wave_file, wave_file, num_bytes)
+        else:
+            print("Copying {} chunk.".format(self.decode_bytes(chunk_name_bytes)))
+            wave_file.write(chunk_name_bytes)
+            wave_file.write(struct.pack("<I", chunk_size))
+            buffer = source_wave_file.read(chunk_size)
+            wave_file.write(buffer)
+            
+    def repair_fmt_chunk(self, source_wave_file, wave_file, chunk_size, sample_rate, bits_per_sample, num_channels):
+        # skip fmt chunk in source file
+        source_wave_file.read(chunk_size)
+        
+        self.write_default_fmt_chunk(wave_file, sample_rate, bits_per_sample, num_channels)
+    
+    def repair_data_chunk(self, source_wave_file, wave_file, num_bytes):
+        print("Repairing and copying data chunk.")
+        
+        wave_file.write(b"data")
+        data_chunk_size = num_bytes - source_wave_file.tell()
+        wave_file.write(struct.pack("<I", data_chunk_size)) # data chunk size (raw audio data size)
+        
+        self.copy_audio_data(source_wave_file, wave_file)
     
     def is_decodable(self, byte_string):
         try:
@@ -782,13 +850,13 @@ class WaveHeaderProcessor():
         
         self.copy_audio_data(source_aiff_file, aiff_file)
         
-    def copy_audio_data(self, source_aiff_file, aiff_file):
+    def copy_audio_data(self, source_file, destination_file):
         print("Copying audio data...")
         
         while True:
-            buffer = source_aiff_file.read(4096)
+            buffer = source_file.read(4096)
             if buffer:
-                aiff_file.write(buffer)
+                destination_file.write(buffer)
             else:
                 break
             
