@@ -38,7 +38,7 @@ from utils import print_error, byte_string_to_hex,\
     print_separator
 
 __date__ = '2019-03-25'
-__updated__ = '2019-09-28'
+__updated__ = '2020-06-28'
 
 class WaveHeaderProcessor():
             
@@ -94,56 +94,86 @@ class WaveHeaderProcessor():
     """
     def analyze_wave_header(self, path, display=True):
         
-        found_error = False
-        
         file_name = os.path.basename(path)
         num_bytes = os.path.getsize(path)
         
         print_with_condition(display, "Displaying WAVE File Header Data for File {}".format(file_name))
         print_with_condition(display, "Number of Bytes: {}".format(num_bytes))
         
-        if num_bytes < 44:
-            print_with_condition(display, "File is only {} bytes long and therefore can not contain a complete WAVE file header.".format(num_bytes))
-            found_error = True
+        if num_bytes < 12:
+            print_with_condition(display, "File is only {} bytes long and therefore can not contain a WAVE file header.".format(num_bytes))
+            return True
         
         print_with_condition(display, "Reading WAVE Header...")
-        header_bytes = None
-        with open(path, "rb") as waveFile:
-            header_bytes = waveFile.read(44)
+        
+        with open(path, "rb") as wave_file:
+            header_bytes = wave_file.read(12)
+                
+            if header_bytes[:4] != b"RIFF":
+                error_with_condition(display, "File does not start with 'RIFF' and therefore does not contain a correct wave file header.".format(file_name))
+                return True
+                
+            chunk_size_bytes = header_bytes[4:8]
+            chunk_size = struct.unpack("<I", chunk_size_bytes)[0]
             
-        print_with_condition(display, "Header contains the following bytes (hexadecimal): {}".format(byte_string_to_hex(header_bytes)))
+            print_with_condition(display, "Chunk Size: {}".format(chunk_size))
             
-        if header_bytes[:4] != b"RIFF":
-            error_with_condition(display, "File does not start with 'RIFF' and therefore does not contain a correct wave file header.".format(file_name))
+            expected_chunk_size = num_bytes - 8
+            if chunk_size != expected_chunk_size:
+                warning_with_condition(display, "Chunk size does not match file size. Should be equal to total number of bytes - 8 = {}, but was: {} (difference: {})".format(expected_chunk_size, chunk_size, abs(expected_chunk_size-chunk_size)))
+            
+            if header_bytes[8:12] != b"WAVE":
+                error_with_condition(display, "Bytes 8-12 do not contain 'WAVE'")
+                return True
+                
+            while wave_file.tell() < num_bytes:
+                chunk_header = wave_file.read(8)
+                chunk_name_bytes = chunk_header[:4]
+                
+                if not self.is_decodable(chunk_name_bytes):
+                    error_with_condition(display, "Invalid (non-printable) chunk name encountered (byte sequence {}). Aborting analysis.".format(chunk_name_bytes))
+                    return True
+                    
+                chunk_size_bytes = chunk_header[4:8]
+                chunk_size = struct.unpack("<I", chunk_size_bytes)[0]
+                
+                current_position = wave_file.tell()
+                
+                if self.analyze_wave_chunk(chunk_name_bytes, chunk_size, wave_file, num_bytes, display):
+                    return True
+                    
+                if wave_file.tell() == current_position:
+                    raise RuntimeError("No bytes consumed while processing '{}' chunk.".format(self.decode_bytes(chunk_name_bytes)))
+                    
+                if chunk_name_bytes == b'data':
+                    # skip remaining parts of the file in case the data chunk is not correct
+                    # otherwise this may lead to follow-up errors
+                    break
+        
+        return False
+    
+    def analyze_wave_chunk(self, chunk_name_bytes, chunk_size, wave_file, num_bytes, display):
+        if chunk_name_bytes == b'fmt ':
+            return self.analyze_fmt_chunk(chunk_size, wave_file, display)
+        elif chunk_name_bytes == b'data':
+            return self.analyze_data_chunk(chunk_size, wave_file, num_bytes, display)
+        else:
+            print_with_condition(display, "Skipping {} chunk (size: {}).".format(self.decode_bytes(chunk_name_bytes), chunk_size))
+            wave_file.seek(chunk_size, 1) # skip chunk and set file position to next chunk
+            
+        return False
+    
+    def analyze_fmt_chunk(self, chunk_size, wave_file, display):
+        found_error = False
+        fmt_chunk_bytes = wave_file.read(chunk_size)
+        
+        print_with_condition(display, "Reading fmt chunk (size: {})".format(chunk_size))
+        
+        if chunk_size != 16:
+            error_with_condition(display, "fmt chunk size is not equal to 16.")
             found_error = True
             
-        chunk_size_bytes = header_bytes[4:8]
-        chunk_size = struct.unpack("<I", chunk_size_bytes)[0]
-        
-        print_with_condition(display, "Chunk Size: {}".format(chunk_size))
-        
-        expected_chunk_size = num_bytes - 8
-        if chunk_size != expected_chunk_size:
-            warning_with_condition(display, "Chunk size does not match file size. Should be equal to total number of bytes - 8 = {}, but was: {} (difference: {})".format(expected_chunk_size, chunk_size, abs(expected_chunk_size-chunk_size)))
-        
-        if header_bytes[8:12] != b"WAVE":
-            error_with_condition(display, "Bytes 8-12 do not contain 'WAVE'")
-            found_error = True
-            
-        if header_bytes[12:16] != b"fmt ":
-            error_with_condition(display, "Bytes 12-16 do not contain 'fmt '")
-            found_error = True
-        
-        sub_chunk_size_bytes = header_bytes[16:20]
-        sub_chunk_size = struct.unpack("<I", sub_chunk_size_bytes)[0]
-        
-        print_with_condition(display, "Subchuck Size: {}".format(sub_chunk_size))
-        
-        if sub_chunk_size != 16:
-            error_with_condition(display, "Subchunk size is not equal to 16.")
-            found_error = True
-            
-        audio_format_bytes = header_bytes[20:22]
+        audio_format_bytes = fmt_chunk_bytes[0:2]
         audio_format = struct.unpack("<H", audio_format_bytes)[0]
         
         print_with_condition(display, "Audio Format: {}".format(audio_format))
@@ -151,7 +181,7 @@ class WaveHeaderProcessor():
             error_with_condition(display, "Audio format is not equal to 1.")
             found_error = True
         
-        num_channel_bytes = header_bytes[22:24]
+        num_channel_bytes = fmt_chunk_bytes[2:4]
         num_channels = struct.unpack("<H", num_channel_bytes)[0]
         
         print_with_condition(display, "Number of Channels: {}".format(num_channels))
@@ -159,7 +189,7 @@ class WaveHeaderProcessor():
             error_with_condition(display, "Number of channels in invalid.")
             found_error = True
             
-        sample_rate_bytes = header_bytes[24:28]
+        sample_rate_bytes = fmt_chunk_bytes[4:8]
         sample_rate = struct.unpack("<I", sample_rate_bytes)[0]
         
         print_with_condition(display, "Sample Rate: {}".format(sample_rate))
@@ -167,7 +197,7 @@ class WaveHeaderProcessor():
             error_with_condition(display, "Sample rate is invalid.")
             found_error = True
             
-        byte_rate_bytes = header_bytes[28:32]
+        byte_rate_bytes = fmt_chunk_bytes[8:12]
         byte_rate = struct.unpack("<I", byte_rate_bytes)[0]
         
         print_with_condition(display, "Byte Rate (number of bytes per second): {}".format(byte_rate))
@@ -175,7 +205,7 @@ class WaveHeaderProcessor():
             error_with_condition(display, "Byte rate is invalid.")
             found_error = True
         
-        block_align_bytes = header_bytes[32:34]
+        block_align_bytes = fmt_chunk_bytes[12:14]
         block_align = struct.unpack("<H", block_align_bytes)[0]
         
         print_with_condition(display, "Bytes per Sample in all Channels (Block Align): {}".format(block_align))
@@ -183,7 +213,7 @@ class WaveHeaderProcessor():
             error_with_condition(display, "Block align in invalid.")
             found_error = True
         
-        bits_per_sample_bytes = header_bytes[34:36]
+        bits_per_sample_bytes = fmt_chunk_bytes[14:16]
         bits_per_sample = struct.unpack("<H", bits_per_sample_bytes)[0]
         
         print_with_condition(display, "Bits per Sample: {}".format(bits_per_sample))
@@ -201,21 +231,21 @@ class WaveHeaderProcessor():
         if byte_rate != computed_byte_rate:
             error_with_condition(display, "Byte rate should be equal to sample rate * number of channels * bits per sample / 8 = {}, but is: {} (difference: {})".format(computed_byte_rate, byte_rate, abs(computed_byte_rate-byte_rate)))
             found_error = True
-        
-        if header_bytes[36:40] != b"data":
-            error_with_condition(display, "Bytes 36-40 do not contain 'data'")
-            found_error = True
             
-        data_subchunk_size_bytes = header_bytes[40:44]
-        data_subchunk_size = struct.unpack("<I", data_subchunk_size_bytes)[0]
-        
-        print_with_condition(display, "Data Subchunk Size: {}".format(data_subchunk_size))
-        
-        expected_data_subchunk_size = num_bytes - 44
-        if data_subchunk_size != expected_data_subchunk_size:
-            warning_with_condition(display, "Data subchunk size does not match file size. Should be {}, but is: {} (difference: {})".format(expected_data_subchunk_size, data_subchunk_size, abs(expected_data_subchunk_size-data_subchunk_size)))
-        
         return found_error
+            
+    
+    def analyze_data_chunk(self, chunk_size, wave_file, num_bytes, display):
+        print_with_condition(display, "Reading data chunk (size: {}).".format(chunk_size))
+        
+        # TODO: static 44 does not work with JUNK chunk
+        expected_data_subchunk_size = num_bytes - wave_file.tell() + 8
+        if chunk_size != expected_data_subchunk_size:
+            warning_with_condition(display, "Data subchunk size does not match file size. Should be {}, but is: {} (difference: {})".format(expected_data_subchunk_size, chunk_size, abs(expected_data_subchunk_size-chunk_size)))
+            
+        wave_file.seek(chunk_size - 8, 1) # skip audio data
+            
+        return False
     
     """
     Displays information about the AIFF file header of the given file.
@@ -289,7 +319,7 @@ class WaveHeaderProcessor():
                     found_error = True
                     
                 if aiff_file.tell() == current_position:
-                    print_error("No bytes consumed while processing chunk.")
+                    print_error("No bytes consumed while processing '{}' chunk.".format(self.decode_bytes(chunk_name_bytes)))
                     break
                 
         return found_error
@@ -452,7 +482,6 @@ class WaveHeaderProcessor():
         block_size_bytes = aiff_file.read(4)
         block_size = struct.unpack(">I", block_size_bytes)[0]
         print_with_condition(display, "Block Size: {}".format(block_size))
-        
         
         aiff_file.seek(chunk_size - 8, 1) # skip audio data
         return False
@@ -643,7 +672,7 @@ class WaveHeaderProcessor():
                     self.repair_aiff_chunk(source_aiff_file, aiff_file, chunk_name_bytes, chunk_size, sample_rate, bits_per_sample, num_channels, num_bytes)
                         
                     if source_aiff_file.tell() == current_position:
-                        raise RuntimeError("No bytes consumed while processing chunk.")
+                        raise RuntimeError("No bytes consumed while processing '{}' chunk.".format(self.decode_bytes(chunk_name_bytes)))
                     
                     if chunk_name_bytes == b"COMM":
                         comm_chunk_written = True
