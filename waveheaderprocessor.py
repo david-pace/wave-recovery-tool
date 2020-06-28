@@ -724,7 +724,7 @@ class WaveHeaderProcessor():
                     
                     if not valid_chunk_name or chunk_name_bytes == b"\x00\x00\x00\x00":
                         print("AIFF header is destroyed completely. Writing a default Logic-style AIFF header...")
-                        self.write_aiff_headers(aiff_file, sample_rate, bits_per_sample, num_channels, num_bytes)
+                        self.write_default_aiff_headers(aiff_file, sample_rate, bits_per_sample, num_channels, num_bytes)
                         comm_chunk_written = True
                         ssnd_chunk_written = True
                         # assume audio data starts at byte 512
@@ -760,14 +760,14 @@ class WaveHeaderProcessor():
         
         return True
     
-    def write_aiff_headers(self, aiff_file, sample_rate, bits_per_sample, num_channels, num_bytes):
-        self.write_comt_chunk(aiff_file)
-        self.write_comm_chunk(aiff_file, sample_rate, bits_per_sample, num_channels, num_bytes)
-        self.write_chan_chunk(aiff_file)
-        self.write_ssnd_chunk(aiff_file, num_bytes)
+    def write_default_aiff_headers(self, aiff_file, sample_rate, bits_per_sample, num_channels, num_bytes):
+        self.write_default_comt_chunk(aiff_file)
+        self.write_default_comm_chunk(aiff_file, sample_rate, bits_per_sample, num_channels, num_bytes)
+        self.write_default_chan_chunk(aiff_file)
+        self.write_default_ssnd_chunk(aiff_file, num_bytes)
         
-    def write_comt_chunk(self, aiff_file):
-        print("Writing COMT chunk.")
+    def write_default_comt_chunk(self, aiff_file):
+        print("Writing default COMT chunk.")
         
         aiff_file.write(b"COMT")
         aiff_file.write(struct.pack(">I", 410))
@@ -775,7 +775,7 @@ class WaveHeaderProcessor():
         aiff_file.write(comment)
         aiff_file.write(b"\x00" * (410-len(comment)))
         
-    def write_comm_chunk(self, aiff_file, sample_rate, bits_per_sample, num_channels, num_bytes):
+    def write_default_comm_chunk(self, aiff_file, sample_rate, bits_per_sample, num_channels, num_bytes):
         print("Writing COMM chunk.")
         
         num_frames = (num_bytes-8-410-32)//(bits_per_sample//8) # TODO: check formula
@@ -787,15 +787,15 @@ class WaveHeaderProcessor():
         aiff_file.write(struct.pack(">H", bits_per_sample)) # bits per sample
         aiff_file.write(self.encode_float80(sample_rate)) # sample rate
         
-    def write_chan_chunk(self, aiff_file):
-        print("Writing CHAN chunk.")
+    def write_default_chan_chunk(self, aiff_file):
+        print("Writing default CHAN chunk.")
         
         aiff_file.write(b"CHAN")
         # TODO: find spec for CHAN chunk
         aiff_file.write(b"\x00\x00\x00\x20\x00\x64\x00\x01\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00")
         
-    def write_ssnd_chunk(self, aiff_file, num_bytes):
-        print("Writing SSND chunk.")
+    def write_default_ssnd_chunk(self, aiff_file, num_bytes):
+        print("Writing default SSND chunk.")
         
         aiff_file.write(b"SSND")
         ssnd_chunk_size = num_bytes - 2184 # TODO: check formula
@@ -839,7 +839,7 @@ class WaveHeaderProcessor():
         
     
     def repair_ssnd_chunk(self, source_aiff_file, aiff_file, num_bytes):
-        print("Repairing and copying SSND chunk.")
+        print("Repairing SSND chunk.")
         
         aiff_file.write(b"SSND")
         ssnd_chunk_size = num_bytes - source_aiff_file.tell()
