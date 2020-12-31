@@ -40,7 +40,7 @@ from waveheaderprocessor import WaveHeaderProcessor
 __all__ = []
 __version__ = 0.1
 __date__ = '2019-03-25'
-__updated__ = '2019-09-28'
+__updated__ = '2020-12-31'
 
 DEBUG = 0
 TESTRUN = 0
@@ -90,6 +90,7 @@ USAGE
         parser.add_argument("-s", "--sample_rate", dest="sample_rate", type=int, help="sample rate to write in the wave file header [default: %(default)s]", default=44100)
         parser.add_argument("-b", "--bits_per_sample", dest="bits_per_sample", type=int, help="bits per sample (e.g. 8, 16, 24) to write in the wave file header [default: %(default)s]", default=16)
         parser.add_argument("-c", "--channels", dest="channels", type=int, help="number of channels to write in the wave file header [default: %(default)s]", default=1)
+        parser.add_argument("-f", "--force", dest="force", action="store_true", help="restores file headers even if no errors were found [default: %(default)s]")
         parser.add_argument("-v", "--verbose", dest="verbose", action="store_true", help="activate verbose output [default: %(default)s]")
         parser.add_argument('-V', '--version', action='version', version=program_version_message)
         
@@ -110,9 +111,12 @@ USAGE
         bits_per_sample = args.bits_per_sample
         num_channels = args.channels
         
+        force = args.force
+        
         if verbose:
             print("Verbose mode on")
             print("Restore mode: {}".format(restore))
+            print("Force flag: {}".format(force))
             
             print("Source path: {}".format(source_path))
             print("Destination path: {}".format(destination_path))
@@ -125,7 +129,7 @@ USAGE
                 raise CLIError("Destination path is required for the restore operation.")
             
             processor = WaveHeaderProcessor()
-            processor.repair_audio_file_headers(source_path, destination_path, sample_rate, bits_per_sample, num_channels, verbose)
+            processor.repair_audio_file_headers(source_path, destination_path, sample_rate, bits_per_sample, num_channels, verbose, force)
             
         else:
             processor = WaveHeaderProcessor()
