@@ -2,7 +2,7 @@
 
 Tool to display WAVE/AIFF file header information and to restore corrupted WAVE/AIFF file headers.
 
-This program was originally developed to recover damaged audio files which were destroyed due to a bug in the audio application _Logic_. See [this blog post](http://www.davehofmann.de/when-logic-destroys-your-audio-files/) for more details.
+This program was originally developed to recover damaged audio files which were destroyed due to a bug in the audio application *Logic*. See [this blog post](https://www.davidpace.de/when-logic-destroys-your-audio-files/) for more details.
 
 ## License
 
@@ -10,7 +10,7 @@ Wave Recovery Tool is licensed under the terms of the GNU General Public License
 
 ## Author
 
-Wave Recovery Tool is developed by David Hofmann &lt;dev@davehofmann.de&gt;
+Wave Recovery Tool is developed by David Pace &lt;dev@davidpace.de&gt;
 
 ## Prerequisites
 
@@ -29,7 +29,7 @@ This tool is capable of reconstructing damaged WAVE and AIFF headers. This will 
 2. Install Python 3. If the installation provides an option to add Python 3 to your environment variables (especially the `PATH` variable), then enable it. You might have to look for "customized" or "advanced" options for that. Remember the location where Python 3 was installed.
 3. On the [github page of Wave Recovery Tool](https://github.com/davehofmann/wave-recovery-tool), click the green **Clone or download** at the top right corner of the page, then click **Download ZIP** and save the ZIP file to your Desktop.
 4. Extract the downloaded ZIP file. This should result in a folder named `wave-recovery-tool-master` containing the program on your Desktop.
-5. Locate the damaged audio files. If you used Logic, these will be located near your project file in a folder named `Media/Audio Files`. If you saved your project to a `.logicx` container, the contents can be shown in Finder by right-clicking the `.logicx` file and choosing _Show Package Contents_.
+5. Locate the damaged audio files. If you used Logic, these will be located near your project file in a folder named `Media/Audio Files`. If you saved your project to a `.logicx` container, the contents can be shown in Finder by right-clicking the `.logicx` file and choosing *Show Package Contents*.
 6. Create a folder named `audio` on your Desktop and copy the damaged audio files into that folder. 
 7. Open a terminal application. Depending on your operating system, it is called **Command Line**, **Terminal** or similar.
 8. Each terminal has a so called **working directory**, which is the file system context for executed programs. Typically, the terminal starts in your user directory. On Windows, this might be something like `C:\Users\homersimpson`, on Unix-based/Mac systems it is something like `/Users/homersimpson`. This directory is sometimes abbreviated as `~`. When a terminal is started, the current working directory is usually your user directory. Enter the command `cd Desktop` and hit enter to make `Desktop` your working directory. Hint: you can usually use the TAB key to auto-complete the folder names.
@@ -45,7 +45,7 @@ This tool is capable of reconstructing damaged WAVE and AIFF headers. This will 
     * If the files were recorded with a bit depth of 24 bits then you have to add `-b 24` before `audio`.
     * If you used a sample rate of 48 kHz, you have to add `-s 48000` before `audio`.
     * If the files have two channels (i.e. stereo instead of mono), then you have to add `-c 2` before `audio`.
-    * See section _Restoring Damaged WAVE/AIFF File Headers_ for more details.
+    * See section *Restoring Damaged WAVE/AIFF File Headers* for more details.
 
 ### Locating Python 3
  
