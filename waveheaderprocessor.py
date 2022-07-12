@@ -238,8 +238,7 @@ class WaveHeaderProcessor():
     def analyze_data_chunk(self, chunk_size, wave_file, num_bytes, display):
         print_with_condition(display, "Reading data chunk (size: {}).".format(chunk_size))
         
-        # TODO: static 44 does not work with JUNK chunk
-        expected_data_subchunk_size = num_bytes - wave_file.tell() + 8
+        expected_data_subchunk_size = num_bytes - wave_file.tell()
         if chunk_size != expected_data_subchunk_size:
             warning_with_condition(display, "Data subchunk size does not match file size. Should be {}, but is: {} (difference: {})".format(expected_data_subchunk_size, chunk_size, abs(expected_data_subchunk_size-chunk_size)))
             
@@ -672,7 +671,7 @@ class WaveHeaderProcessor():
         print("Writing default data chunk.")
         wave_file.write(b"data")
         
-        data_chunk_size = num_bytes-44
+        data_chunk_size = num_bytes - 44
         wave_file.write(struct.pack("<I", data_chunk_size)) # data chunk size (raw audio data size)   
         
     def repair_wave_chunk(self, source_wave_file, wave_file, chunk_name_bytes, chunk_size, sample_rate, bits_per_sample, num_channels, num_bytes):
