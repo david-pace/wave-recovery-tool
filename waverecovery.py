@@ -38,9 +38,9 @@ from argparse import RawDescriptionHelpFormatter
 from waveheaderprocessor import WaveHeaderProcessor
 
 __all__ = []
-__version__ = 0.1
+__version__ = '1.0.0'
 __date__ = '2019-03-25'
-__updated__ = '2020-12-31'
+__updated__ = '2022-07-13'
 
 DEBUG = 0
 TESTRUN = 0
@@ -65,7 +65,7 @@ def main(argv=None): # IGNORE:C0111
         sys.argv.extend(argv)
 
     program_name = os.path.basename(sys.argv[0])
-    program_version = "v%s" % __version__
+    program_version = __version__
     program_build_date = str(__updated__)
     program_version_message = '%%(prog)s %s (%s)' % (program_version, program_build_date)
     program_shortdesc = __import__('__main__').__doc__.split("\n")[1]
@@ -88,9 +88,11 @@ USAGE
         parser = ArgumentParser(description=program_license, formatter_class=RawDescriptionHelpFormatter)
         parser.add_argument("-r", "--restore", dest="restore", action="store_true", help="restores corrupted wave file headers. Scans the given source path for wave files and writes the file(s) with restored headers to the given destination file or directory. [default: %(default)s]")
         parser.add_argument("-s", "--sample_rate", dest="sample_rate", type=int, help="sample rate to write in the wave file header [default: %(default)s]", default=44100)
-        parser.add_argument("-b", "--bits_per_sample", dest="bits_per_sample", type=int, help="bits per sample (e.g. 8, 16, 24) to write in the wave file header [default: %(default)s]", default=16)
-        parser.add_argument("-c", "--channels", dest="channels", type=int, help="number of channels to write in the wave file header [default: %(default)s]", default=1)
+        parser.add_argument("-b", "--bits_per_sample", dest="bits_per_sample", type=int, help="bits per sample (e.g. 8, 16 or 24 bit) used to record/write the damaged audio file(s) [default: %(default)s]", default=16)
+        parser.add_argument("-c", "--channels", dest="channels", type=int, help="number of audio channels (1=Mono, 2=Stereo) in the damaged audio file(s) [default: %(default)s]", default=1)
         parser.add_argument("-f", "--force", dest="force", action="store_true", help="restores file headers even if no errors were found [default: %(default)s]")
+        parser.add_argument("-a", "--application", dest="application", help="specifies which application encoded the damaged audio file. Possible values: logic (Apple Logic Pro), live (Ableton Live) [default: %(default)s]", default="logic")
+        
         parser.add_argument("-v", "--verbose", dest="verbose", action="store_true", help="activate verbose output [default: %(default)s]")
         parser.add_argument('-V', '--version', action='version', version=program_version_message)
         
@@ -107,6 +109,8 @@ USAGE
         
         verbose = args.verbose
         
+        application = args.application
+        
         sample_rate = args.sample_rate
         bits_per_sample = args.bits_per_sample
         num_channels = args.channels
@@ -118,18 +122,21 @@ USAGE
             print("Restore mode: {}".format(restore))
             print("Force flag: {}".format(force))
             
-            print("Source path: {}".format(source_path))
-            print("Destination path: {}".format(destination_path))
+            print("Application: {}".format(application))
+            
             print("Sample rate: {}".format(sample_rate))
             print("Bits per sample: {}".format(bits_per_sample))
             print("Number of channels: {}".format(num_channels))
+            
+            print("Source path: {}".format(source_path))
+            print("Destination path: {}".format(destination_path))
             
         if restore:
             if destination_path is None:
                 raise CLIError("Destination path is required for the restore operation.")
             
             processor = WaveHeaderProcessor()
-            processor.repair_audio_file_headers(source_path, destination_path, sample_rate, bits_per_sample, num_channels, verbose, force)
+            processor.repair_audio_file_headers(source_path, destination_path, sample_rate, bits_per_sample, num_channels, verbose, force, application)
             
         else:
             processor = WaveHeaderProcessor()
