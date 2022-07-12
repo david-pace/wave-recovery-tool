@@ -5,7 +5,7 @@
 
 Command line interface for Wave Recovery Tool.
 
-Copyright (C) 2019 David Hofmann
+Copyright (C) 2019-2022 David Pace
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -20,11 +20,11 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-@author:     David Hofmann
+@author:     David Pace
 
 @license:    GNU General Public License Version 3
 
-@contact:    dev@davehofmann.de
+@contact:    dev@davidpace.de
 
 @deffield    updated: Updated
 '''
@@ -71,8 +71,8 @@ def main(argv=None): # IGNORE:C0111
     program_shortdesc = __import__('__main__').__doc__.split("\n")[1]
     program_license = '''%s
 
-  Created by David Hofmann on %s.
-  Copyright 2019 David Hofmann. All rights reserved.
+  Created by David Pace on %s.
+  Copyright 2019 David Pace. All rights reserved.
 
   Licensed under the GNU General Public License Version 3
   https://www.gnu.org/licenses/lgpl-3.0

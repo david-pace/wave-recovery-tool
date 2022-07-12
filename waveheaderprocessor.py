@@ -6,7 +6,7 @@
 Displays information about WAVE/AIFF file headers
 and restores corrupted WAVE/AIFF file headers.
 
-Copyright (C) 2019 David Hofmann
+Copyright (C) 2019-2022 David Pace
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -21,11 +21,11 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-@author:     David Hofmann
+@author:     David Pace
 
 @license:    GNU General Public License Version 3
 
-@contact:    dev@davehofmann.de
+@contact:    dev@davidpace.de
 
 @deffield    updated: Updated
 '''
@@ -829,7 +829,7 @@ class WaveHeaderProcessor():
         
         aiff_file.write(b"COMT")
         aiff_file.write(struct.pack(">I", 410))
-        comment = b"This AIFF file was restored using Wave Recovery Tool developed by David Hofmann. Visit https://github.com/davehofmann/wave-recovery-tool for more information."
+        comment = b"This AIFF file was restored using Wave Recovery Tool developed by David Pace. Visit https://github.com/david-pace/wave-recovery-tool for more information."
         aiff_file.write(comment)
         aiff_file.write(b"\x00" * (410-len(comment)))
     
