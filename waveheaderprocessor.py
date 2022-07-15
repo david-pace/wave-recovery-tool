@@ -38,7 +38,7 @@ from utils import print_error,\
     print_separator
 
 __date__ = '2019-03-25'
-__updated__ = '2022-07-13'
+__updated__ = '2022-07-15'
 
 class WaveHeaderProcessor():
             
@@ -483,18 +483,18 @@ class WaveHeaderProcessor():
         aiff_file.seek(chunk_size - 8, 1) # skip audio data
         return False
             
-    def repair_audio_file_headers(self, source_path, destination_path, sample_rate, bits_per_sample, num_channels, verbose, force, application):
+    def repair_audio_file_headers(self, source_path, destination_path, sample_rate, bits_per_sample, num_channels, verbose, force, application, offset):
         if os.path.isdir(source_path):
-            self.repair_audio_file_headers_in_directory(source_path, destination_path, sample_rate, bits_per_sample, num_channels, force, application)
+            self.repair_audio_file_headers_in_directory(source_path, destination_path, sample_rate, bits_per_sample, num_channels, force, application, offset)
         elif os.path.isfile(source_path):
             if os.path.exists(destination_path):
                 if not self.ask_user_to_overwrite_destination_file(destination_path):
                     return
             
             if self.is_wave_file(source_path):
-                self.repair_wave_file_header(source_path, destination_path, sample_rate, bits_per_sample, num_channels)
+                self.repair_wave_file_header(source_path, destination_path, sample_rate, bits_per_sample, num_channels, application, offset)
             elif self.is_aiff_file(source_path):
-                self.repair_aiff_file_header(source_path, destination_path, sample_rate, bits_per_sample, num_channels, application)
+                self.repair_aiff_file_header(source_path, destination_path, sample_rate, bits_per_sample, num_channels, application, offset)
             else:
                 print("Unrecognized file extension, skipping file {}".format(source_path))
         else:
@@ -507,7 +507,7 @@ class WaveHeaderProcessor():
             return True
         return False
 
-    def repair_audio_file_headers_in_directory(self, source_path, destination_path, sample_rate, bits_per_sample, num_channels, force, application):
+    def repair_audio_file_headers_in_directory(self, source_path, destination_path, sample_rate, bits_per_sample, num_channels, force, application, offset):
         if not os.path.exists(destination_path):
             print("Creating destination directory {}...".format(destination_path))
             os.mkdir(destination_path)
@@ -546,9 +546,9 @@ class WaveHeaderProcessor():
                         
                         repair_result = False
                         if is_wave_file:
-                            repair_result = self.repair_wave_file_header(full_path, full_destination_path, sample_rate, bits_per_sample, num_channels)
+                            repair_result = self.repair_wave_file_header(full_path, full_destination_path, sample_rate, bits_per_sample, num_channels, application, offset)
                         else:
-                            repair_result = self.repair_aiff_file_header(full_path, full_destination_path, sample_rate, bits_per_sample, num_channels, application)
+                            repair_result = self.repair_aiff_file_header(full_path, full_destination_path, sample_rate, bits_per_sample, num_channels, application, offset)
                         
                         if repair_result:
                             num_repaired_audio_files += 1
@@ -568,14 +568,14 @@ class WaveHeaderProcessor():
             print("Analyzing AIFF file {}".format(path))
             return self.analyze_aiff_header(path, False)
     
-    def repair_wave_file_header(self, source_path, destination_path, sample_rate, bits_per_sample, num_channels):
+    def repair_wave_file_header(self, source_path, destination_path, sample_rate, bits_per_sample, num_channels, application, offset):
         
         print("Restoring WAVE header in source file {}, storing result file in {}".format(source_path, destination_path))
         
         print("Writing WAVE file header with sample rate {} Hz, {} bits per sample, {} audio channels...".format(sample_rate, bits_per_sample, num_channels))
         num_bytes = os.path.getsize(source_path)
         
-        chunk_size = num_bytes-8
+        chunk_size = num_bytes - 8
         
         try:
             with open(source_path, "rb") as source_wave_file, open(destination_path, "wb") as wave_file:
@@ -604,9 +604,7 @@ class WaveHeaderProcessor():
                         fmt_chunk_written = True
                         data_chunk_written = True
                         # assume audio data starts at byte 44
-                        print("Start offset for copying audio data is 44.")
-                        source_wave_file.seek(44)
-                        self.copy_audio_data(source_wave_file, wave_file)
+                        self.copy_audio_data(source_wave_file, wave_file, num_bytes, 44, offset)
                         return True
                     
                     if chunk_size == 0:
@@ -614,7 +612,7 @@ class WaveHeaderProcessor():
                     
                     current_position = source_wave_file.tell()
                     
-                    self.repair_wave_chunk(source_wave_file, wave_file, chunk_name_bytes, chunk_size, sample_rate, bits_per_sample, num_channels, num_bytes)
+                    self.repair_wave_chunk(source_wave_file, wave_file, chunk_name_bytes, chunk_size, sample_rate, bits_per_sample, num_channels, num_bytes, offset)
                         
                     if source_wave_file.tell() == current_position:
                         raise RuntimeError("No bytes consumed while processing '{}' chunk.".format(self.decode_bytes(chunk_name_bytes)))
@@ -674,11 +672,11 @@ class WaveHeaderProcessor():
         data_chunk_size = num_bytes - 44
         wave_file.write(struct.pack("<I", data_chunk_size)) # data chunk size (raw audio data size)   
         
-    def repair_wave_chunk(self, source_wave_file, wave_file, chunk_name_bytes, chunk_size, sample_rate, bits_per_sample, num_channels, num_bytes):
+    def repair_wave_chunk(self, source_wave_file, wave_file, chunk_name_bytes, chunk_size, sample_rate, bits_per_sample, num_channels, num_bytes, offset):
         if chunk_name_bytes == b'fmt ':
             self.repair_fmt_chunk(source_wave_file, wave_file, chunk_size, sample_rate, bits_per_sample, num_channels)
         elif chunk_name_bytes == b'data':
-            self.repair_data_chunk(source_wave_file, wave_file, num_bytes)
+            self.repair_data_chunk(source_wave_file, wave_file, num_bytes, offset)
         else:
             print("Copying {} chunk.".format(self.decode_bytes(chunk_name_bytes)))
             wave_file.write(chunk_name_bytes)
@@ -692,7 +690,7 @@ class WaveHeaderProcessor():
         
         self.write_default_fmt_chunk(wave_file, sample_rate, bits_per_sample, num_channels)
     
-    def repair_data_chunk(self, source_wave_file, wave_file, num_bytes):
+    def repair_data_chunk(self, source_wave_file, wave_file, num_bytes, offset):
         print("Repairing and copying data chunk.")
         
         wave_file.write(b"data")
@@ -700,8 +698,7 @@ class WaveHeaderProcessor():
         data_chunk_size = num_bytes - current_offset
         wave_file.write(struct.pack("<I", data_chunk_size)) # data chunk size (raw audio data size)
         
-        print("Start offset for copying audio data is {}.".format(current_offset))
-        self.copy_audio_data(source_wave_file, wave_file)
+        self.copy_audio_data(source_wave_file, wave_file, num_bytes, current_offset, offset)
     
     def is_decodable(self, byte_string):
         try:
@@ -713,7 +710,7 @@ class WaveHeaderProcessor():
     def decode_bytes(self, byte_string):
         return byte_string.decode("utf-8")
 
-    def repair_aiff_file_header(self, source_path, destination_path, sample_rate, bits_per_sample, num_channels, application):
+    def repair_aiff_file_header(self, source_path, destination_path, sample_rate, bits_per_sample, num_channels, application, offset):
         print("Restoring AIFF header in source file {}, storing result file in {}".format(source_path, destination_path))
         print("Writing AIFF file header with sample rate {} Hz, {} bits per sample, {} audio channels...".format(sample_rate, bits_per_sample, num_channels))
         num_bytes = os.path.getsize(source_path)
@@ -752,9 +749,7 @@ class WaveHeaderProcessor():
                         comm_chunk_written = True
                         ssnd_chunk_written = True
                         audio_data_start_offset = self.get_aiff_data_start_offset(application)
-                        print("Start offset for copying audio data is {}.".format(audio_data_start_offset))
-                        source_aiff_file.seek(audio_data_start_offset)
-                        self.copy_audio_data(source_aiff_file, aiff_file)
+                        self.copy_audio_data(source_aiff_file, aiff_file, num_bytes, audio_data_start_offset, offset)
                         return True
                     
                     if chunk_size == 0:
@@ -762,7 +757,7 @@ class WaveHeaderProcessor():
                     
                     current_position = source_aiff_file.tell()
                     
-                    self.repair_aiff_chunk(source_aiff_file, aiff_file, chunk_name_bytes, chunk_size, sample_rate, bits_per_sample, num_channels, num_bytes)
+                    self.repair_aiff_chunk(source_aiff_file, aiff_file, chunk_name_bytes, chunk_size, sample_rate, bits_per_sample, num_channels, num_bytes, offset)
                         
                     if source_aiff_file.tell() == current_position:
                         raise RuntimeError("No bytes consumed while processing '{}' chunk.".format(self.decode_bytes(chunk_name_bytes)))
@@ -895,11 +890,11 @@ class WaveHeaderProcessor():
         
         
     
-    def repair_aiff_chunk(self, source_aiff_file, aiff_file, chunk_name_bytes, chunk_size, sample_rate, bits_per_sample, num_channels, num_bytes):
+    def repair_aiff_chunk(self, source_aiff_file, aiff_file, chunk_name_bytes, chunk_size, sample_rate, bits_per_sample, num_channels, num_bytes, offset):
         if chunk_name_bytes == b'COMM':
             self.repair_comm_chunk(source_aiff_file, aiff_file, chunk_size, sample_rate, bits_per_sample, num_channels)
         elif chunk_name_bytes == b'SSND':
-            self.repair_ssnd_chunk(source_aiff_file, aiff_file, num_bytes)
+            self.repair_ssnd_chunk(source_aiff_file, aiff_file, num_bytes, offset)
         else:
             print("Copying {} chunk.".format(self.decode_bytes(chunk_name_bytes)))
             aiff_file.write(chunk_name_bytes)
@@ -928,7 +923,7 @@ class WaveHeaderProcessor():
         aiff_file.write(source_comm_chunk_bytes[18:])
         
     
-    def repair_ssnd_chunk(self, source_aiff_file, aiff_file, num_bytes):
+    def repair_ssnd_chunk(self, source_aiff_file, aiff_file, num_bytes, offset):
         print("Repairing SSND chunk.")
         
         aiff_file.write(b"SSND")
@@ -936,13 +931,23 @@ class WaveHeaderProcessor():
         ssnd_chunk_size = num_bytes - current_offset
         aiff_file.write(struct.pack(">I", ssnd_chunk_size)) # data chunk size (raw audio data size)
         # offset and block size are copied from the source file
-        #aiff_file.write(struct.pack(">I", 0)) # offset
-        #aiff_file.write(struct.pack(">I", 0)) # block size
-        print("Start offset for copying audio data (including offset and block size) is {}.".format(current_offset))
-        self.copy_audio_data(source_aiff_file, aiff_file)
+        # if an audio offset is specified manually, write offset and block size here
+        if offset is not None:
+            aiff_file.write(struct.pack(">I", 0)) # offset
+            aiff_file.write(struct.pack(">I", 0)) # block size
+            
+        self.copy_audio_data(source_aiff_file, aiff_file, num_bytes, current_offset, offset)
         
-    def copy_audio_data(self, source_file, destination_file):
-        print("Copying audio data...")
+    def copy_audio_data(self, source_file, destination_file, num_bytes, default_offset, offset):
+        start_offset = default_offset if offset is None else offset
+        # if offset is negative, interpret as offset from the end of the file
+        effective_start_offset = start_offset if start_offset >= 0 else num_bytes + start_offset
+        print("Start offset for copying data in the input file is {}".format(effective_start_offset))
+        
+        if source_file.tell() != effective_start_offset:
+            source_file.seek(effective_start_offset)
+        
+        print("Copying data...")
         
         while True:
             buffer = source_file.read(4096)
@@ -950,6 +955,8 @@ class WaveHeaderProcessor():
                 destination_file.write(buffer)
             else:
                 break
+            
+        print("Data copied successfully.")
             
         
     

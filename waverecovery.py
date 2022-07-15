@@ -38,9 +38,9 @@ from argparse import RawDescriptionHelpFormatter
 from waveheaderprocessor import WaveHeaderProcessor
 
 __all__ = []
-__version__ = '1.0.0'
+__version__ = '1.1.0'
 __date__ = '2019-03-25'
-__updated__ = '2022-07-13'
+__updated__ = '2022-07-15'
 
 DEBUG = 0
 TESTRUN = 0
@@ -91,7 +91,8 @@ USAGE
         parser.add_argument("-b", "--bits_per_sample", dest="bits_per_sample", type=int, help="bits per sample (e.g. 8, 16 or 24 bit) used to record/write the damaged audio file(s) [default: %(default)s]", default=16)
         parser.add_argument("-c", "--channels", dest="channels", type=int, help="number of audio channels (1=Mono, 2=Stereo) in the damaged audio file(s) [default: %(default)s]", default=1)
         parser.add_argument("-f", "--force", dest="force", action="store_true", help="restores file headers even if no errors were found [default: %(default)s]")
-        parser.add_argument("-a", "--application", dest="application", help="specifies which application encoded the damaged audio file. Possible values: logic (Apple Logic Pro), live (Ableton Live) [default: %(default)s]", default="logic")
+        parser.add_argument("-a", "--application", dest="application", help="specifies which application encoded the damaged audio file(s). Possible values: logic (Apple Logic Pro), live (Ableton Live) [default: %(default)s]", default="logic")
+        parser.add_argument("-o", "--offset", dest="offset", type=int, help="offset of the first audio data byte in the damaged file(s) to be copied to the destination file after the headers")
         
         parser.add_argument("-v", "--verbose", dest="verbose", action="store_true", help="activate verbose output [default: %(default)s]")
         parser.add_argument('-V', '--version', action='version', version=program_version_message)
@@ -110,6 +111,7 @@ USAGE
         verbose = args.verbose
         
         application = args.application
+        offset = args.offset
         
         sample_rate = args.sample_rate
         bits_per_sample = args.bits_per_sample
@@ -124,6 +126,8 @@ USAGE
             
             print("Application: {}".format(application))
             
+            print("Start Offset: {}".format(offset))
+            
             print("Sample rate: {}".format(sample_rate))
             print("Bits per sample: {}".format(bits_per_sample))
             print("Number of channels: {}".format(num_channels))
@@ -136,7 +140,7 @@ USAGE
                 raise CLIError("Destination path is required for the restore operation.")
             
             processor = WaveHeaderProcessor()
-            processor.repair_audio_file_headers(source_path, destination_path, sample_rate, bits_per_sample, num_channels, verbose, force, application)
+            processor.repair_audio_file_headers(source_path, destination_path, sample_rate, bits_per_sample, num_channels, verbose, force, application, offset)
             
         else:
             processor = WaveHeaderProcessor()
