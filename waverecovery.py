@@ -38,7 +38,7 @@ from argparse import RawDescriptionHelpFormatter
 from waveheaderprocessor import WaveHeaderProcessor
 
 __all__ = []
-__version__ = '1.1.0'
+__version__ = '1.2.0'
 __date__ = '2019-03-25'
 __updated__ = '2022-07-15'
 
@@ -56,14 +56,9 @@ class CLIError(Exception):
     def __unicode__(self):
         return self.msg
 
-def main(argv=None): # IGNORE:C0111
+def main(args=None): # IGNORE:C0111
     '''Command line options.'''
-
-    if argv is None:
-        argv = sys.argv
-    else:
-        sys.argv.extend(argv)
-
+    
     program_name = os.path.basename(sys.argv[0])
     program_version = __version__
     program_build_date = str(__updated__)
@@ -92,7 +87,8 @@ USAGE
         parser.add_argument("-c", "--channels", dest="channels", type=int, help="number of audio channels (1=Mono, 2=Stereo) in the damaged audio file(s) [default: %(default)s]", default=1)
         parser.add_argument("-f", "--force", dest="force", action="store_true", help="restores file headers even if no errors were found [default: %(default)s]")
         parser.add_argument("-a", "--application", dest="application", help="specifies which application encoded the damaged audio file(s). Possible values: logic (Apple Logic Pro), live (Ableton Live) [default: %(default)s]", default="logic")
-        parser.add_argument("-o", "--offset", dest="offset", type=int, help="offset of the first audio data byte in the damaged file(s) to be copied to the destination file after the headers")
+        parser.add_argument("-o", "--offset", dest="offset", type=int, help="offset of the first audio data byte in the damaged file(s) to be copied to the destination file after the headers; negative values indicate offsets relative to the end of the file")
+        parser.add_argument("-e", "--end_offset", dest="end_offset", type=int, help="offset of the last audio data byte in the damaged file(s) to be copied to the destination file after the headers; negative values indicate offsets relative to the end of the file")
         
         parser.add_argument("-v", "--verbose", dest="verbose", action="store_true", help="activate verbose output [default: %(default)s]")
         parser.add_argument('-V', '--version', action='version', version=program_version_message)
@@ -101,7 +97,7 @@ USAGE
         parser.add_argument(dest="destination_path", help="path to directory in which restored wave files should be saved [default: %(default)s]", metavar="destination_path", nargs='?')
 
         # Process arguments
-        args = parser.parse_args()
+        args = parser.parse_args(args)
         
         restore = args.restore
 
@@ -112,6 +108,7 @@ USAGE
         
         application = args.application
         offset = args.offset
+        end_offset = args.end_offset
         
         sample_rate = args.sample_rate
         bits_per_sample = args.bits_per_sample
@@ -127,6 +124,7 @@ USAGE
             print("Application: {}".format(application))
             
             print("Start Offset: {}".format(offset))
+            print("End Offset: {}".format(end_offset))
             
             print("Sample rate: {}".format(sample_rate))
             print("Bits per sample: {}".format(bits_per_sample))
@@ -140,7 +138,7 @@ USAGE
                 raise CLIError("Destination path is required for the restore operation.")
             
             processor = WaveHeaderProcessor()
-            processor.repair_audio_file_headers(source_path, destination_path, sample_rate, bits_per_sample, num_channels, verbose, force, application, offset)
+            processor.repair_audio_file_headers(source_path, destination_path, sample_rate, bits_per_sample, num_channels, verbose, force, application, offset, end_offset)
             
         else:
             processor = WaveHeaderProcessor()
@@ -175,4 +173,4 @@ if __name__ == "__main__":
         stats.print_stats()
         statsfile.close()
         sys.exit(0)
-    sys.exit(main())
+    sys.exit(main(sys.argv[1:]))
