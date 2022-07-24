@@ -27,7 +27,7 @@ This tool is capable of reconstructing damaged WAVE and AIFF headers. This will 
 
 1. Download [Python 3](https://www.python.org/downloads/)
 2. Install Python 3. If the installation provides an option to add Python 3 to your environment variables (especially the `PATH` variable), then enable it. You might have to look for "customized" or "advanced" options for that. Remember the location where Python 3 was installed.
-3. On the [github page of Wave Recovery Tool](https://github.com/davehofmann/wave-recovery-tool), click the green **Clone or download** at the top right corner of the page, then click **Download ZIP** and save the ZIP file to your Desktop.
+3. On the [Github page of Wave Recovery Tool](https://github.com/davehofmann/wave-recovery-tool), click the green **Code** button at the top right corner of the page, then click **Download ZIP** and save the ZIP file to your Desktop.
 4. Extract the downloaded ZIP file. This should result in a folder named `wave-recovery-tool-master` containing the program on your Desktop.
 5. Locate the damaged audio files. If you used Logic, these will be located near your project file in a folder named `Media/Audio Files`. If you saved your project to a `.logicx` container, the contents can be shown in Finder by right-clicking the `.logicx` file and choosing *Show Package Contents*.
 6. Create a folder named `audio` on your Desktop and copy the damaged audio files into that folder. 
@@ -146,7 +146,7 @@ These values can be changed with the following parameters:
 
 Examples are provided below.
 
-## Examples
+#### Examples
 
 Restore audio files with
 
@@ -188,6 +188,44 @@ Restore audio files with
 
 ```
 python3 wave-recovery-tool-master/waverecovery.py -r -s 96000 -b 24 -c 2 audio restored
+```
+
+### Specifying Applications
+
+In some cases the tool requires additional information about the application that originally created/damaged the input file(s). By default, the tool assumes that the files were destroyed by Apple Logic. The tool also supports restoring files destroyed by Ableton Live and a ransomware called Stop/Djvu. To provide information about the application, use the `-a` or `--application` parameter. The following application names are supported:
+
+```
+-a logic (Apple Logic, default)
+-a live (Ableton Live)
+-a djvu (Stop/Djvu Ransomware)
+```
+
+Example for Ableton Live:
+
+```
+python3 wave-recovery-tool-master/waverecovery.py -r -s 96000 -b 24 -c 2 -a live audio restored
+```
+
+Example for Stop/Djvu:
+
+```
+python3 wave-recovery-tool-master/waverecovery.py -r -s 96000 -b 16 -a djvu audio restored
+```
+
+Providing the application parameter will aid the tool in computing the correct start and end offsets for the audio data.
+
+### Specifying Custom Audio Data Offsets
+
+If nothing else is specified, the tool will assume that the audio data starts at offset 44 in WAVE files, and at offset 512 in AIFF files. If the audio data starts at a different offset, it can be specified using the `-o` or `--offset` parameter.
+
+Similarly, a custom end offset can be specified. If no end offset is given, the data will be copied until the very end of the input file. Use the parameter `-e` or  `--end_offset` to specify a custom end offset.
+
+Offsets must be specified as integer value. It is also supported to supply negative integer values. In this case the offset will be interpreted as a position relative to the end of the file.
+
+For example, the following command line will copy audio data starting at offset `153608` until `334` bytes before the end of the file:
+
+```
+python3 wave-recovery-tool-master/waverecovery.py -r -s 96000 -b 24 -o 153608 -e -334
 ```
 
 ## Donations
