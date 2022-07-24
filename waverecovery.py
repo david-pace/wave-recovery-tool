@@ -38,9 +38,9 @@ from argparse import RawDescriptionHelpFormatter
 from waveheaderprocessor import WaveHeaderProcessor
 
 __all__ = []
-__version__ = '1.2.0'
+__version__ = '1.3.0'
 __date__ = '2019-03-25'
-__updated__ = '2022-07-15'
+__updated__ = '2022-07-24'
 
 DEBUG = 0
 TESTRUN = 0

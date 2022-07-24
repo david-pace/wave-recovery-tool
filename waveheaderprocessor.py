@@ -36,9 +36,11 @@ import traceback
 from utils import print_error,\
     print_with_condition, error_with_condition, warning_with_condition,\
     print_separator
+from math import ceil
 
 __date__ = '2019-03-25'
-__updated__ = '2022-07-15'
+__updated__ = '2022-07-24'
+
 
 class WaveHeaderProcessor():
             
@@ -76,8 +78,12 @@ class WaveHeaderProcessor():
                     print("Unrecognized file extension, skipping file {}".format(full_path))
         print("Total Number of Audio Files:", num_audio_files)
                     
-    def is_wave_file(self, file):
-        extension = os.path.splitext(file)[-1].lower()
+    def is_wave_file(self, path):
+        path_lower_case = path.lower()
+        if path_lower_case.endswith(".wav.paas") or path_lower_case.endswith(".wave.paas"):
+            return True
+        
+        extension = os.path.splitext(path)[-1].lower()
         return extension == ".wav" or extension == ".wave"
     
     def is_aiff_file(self, file):
@@ -538,7 +544,7 @@ class WaveHeaderProcessor():
                             print("Skipping file {} because no errors were found.".format(full_path))
                         
                     if force or found_error:
-                        full_destination_path = os.path.join(destination_path, file)
+                        full_destination_path = os.path.join(destination_path, self.get_destination_file_name(file))
                         
                         if os.path.exists(full_destination_path):
                             if not self.ask_user_to_overwrite_destination_file(full_destination_path):
@@ -558,6 +564,15 @@ class WaveHeaderProcessor():
                     print("Unrecognized file extension, skipping file {}".format(full_path))
                     
         print("Total Number of Repaired Audio Files:", num_repaired_audio_files)
+        
+    def get_destination_file_name(self, source_file_name):
+        """
+        Removes the .paas file extension from the given file name, if applicable
+        """
+        file_name_lower_case = source_file_name.lower()
+        if file_name_lower_case.endswith(".paas"):
+            return source_file_name[0:-5]
+        return source_file_name
         
     def check_file_for_errors(self, path, is_wave_file):
         # we print an analysis notification here because nothing is displayed during analysis due the display=False flag
@@ -603,8 +618,9 @@ class WaveHeaderProcessor():
                         self.write_default_wave_headers(wave_file, sample_rate, bits_per_sample, num_channels, num_bytes)
                         fmt_chunk_written = True
                         data_chunk_written = True
-                        # if no explicit offset is provided, assume audio data starts at byte 44
-                        self.copy_audio_data(source_wave_file, wave_file, num_bytes, 44, offset, end_offset)
+                        audio_data_start_offset = self.get_wave_data_start_offset(application, bits_per_sample, num_channels)
+                        default_end_offset = self.get_default_end_offset(num_bytes, application)
+                        self.copy_audio_data(source_wave_file, wave_file, num_bytes, audio_data_start_offset, offset, default_end_offset, end_offset)
                         return True
                     
                     if chunk_size == 0:
@@ -612,7 +628,7 @@ class WaveHeaderProcessor():
                     
                     current_position = source_wave_file.tell()
                     
-                    self.repair_wave_chunk(source_wave_file, wave_file, chunk_name_bytes, chunk_size, sample_rate, bits_per_sample, num_channels, num_bytes, offset, end_offset)
+                    self.repair_wave_chunk(source_wave_file, wave_file, chunk_name_bytes, chunk_size, sample_rate, bits_per_sample, num_channels, num_bytes, offset, end_offset, application)
                         
                     if source_wave_file.tell() == current_position:
                         raise RuntimeError("No bytes consumed while processing '{}' chunk.".format(self.decode_bytes(chunk_name_bytes)))
@@ -634,6 +650,51 @@ class WaveHeaderProcessor():
                 return False            
         
         return True
+    
+
+    def get_wave_data_start_offset(self, application, bits_per_sample, num_channels):
+        if application == "djvu":
+            return self.compute_djvu_start_offset(bits_per_sample, num_channels)
+        return 44
+    
+    def compute_djvu_start_offset(self, bits_per_sample, num_channels):
+        """
+        Computes the offset of the first complete audio frame byte.
+        File is encrypted up to offset 153605.
+        Example: 24 bit stereo, frame size 6 bytes
+        First complete frame is at byte 44 + (25594 * 6) = 153608
+        
+        >>> p = WaveHeaderProcessor()
+        >>> p.compute_djvu_start_offset(24, 2)  
+        153608
+        >>> p.compute_djvu_start_offset(24, 1)  
+        153605
+        >>> p.compute_djvu_start_offset(16, 1)  
+        153606
+        """
+        frame_size = (bits_per_sample // 8) * num_channels
+        first_complete_frame_number = self.compute_first_frame_number(frame_size)
+        return 44 + (first_complete_frame_number * frame_size)
+    
+    def compute_first_frame_number(self, frame_size):
+        """
+        The number of the first complete frame can be computed by rounding up
+        (153605-44) / frame_size
+        
+        >>> p = WaveHeaderProcessor()
+        >>> p.compute_first_frame_number(6)  
+        25594
+        >>> p.compute_first_frame_number(3)  
+        51187
+        >>> p.compute_first_frame_number(2)  
+        76781
+        """
+        return int(ceil((153605 - 44) / frame_size))
+    
+    def get_default_end_offset(self, num_bytes, application):
+        if application == "djvu":
+            return -334 # skip last 334 bytes
+        return num_bytes
     
     def write_default_wave_headers(self, wave_file, sample_rate, bits_per_sample, num_channels, num_bytes):
         self.write_default_fmt_chunk(wave_file, sample_rate, bits_per_sample, num_channels)
@@ -672,11 +733,11 @@ class WaveHeaderProcessor():
         data_chunk_size = num_bytes - 44
         wave_file.write(struct.pack("<I", data_chunk_size)) # data chunk size (raw audio data size)   
         
-    def repair_wave_chunk(self, source_wave_file, wave_file, chunk_name_bytes, chunk_size, sample_rate, bits_per_sample, num_channels, num_bytes, offset, end_offset):
+    def repair_wave_chunk(self, source_wave_file, wave_file, chunk_name_bytes, chunk_size, sample_rate, bits_per_sample, num_channels, num_bytes, offset, end_offset, application):
         if chunk_name_bytes == b'fmt ':
             self.repair_fmt_chunk(source_wave_file, wave_file, chunk_size, sample_rate, bits_per_sample, num_channels)
         elif chunk_name_bytes == b'data':
-            self.repair_data_chunk(source_wave_file, wave_file, num_bytes, offset, end_offset)
+            self.repair_data_chunk(source_wave_file, wave_file, num_bytes, offset, end_offset, application)
         else:
             print("Copying {} chunk.".format(self.decode_bytes(chunk_name_bytes)))
             wave_file.write(chunk_name_bytes)
@@ -690,15 +751,15 @@ class WaveHeaderProcessor():
         
         self.write_default_fmt_chunk(wave_file, sample_rate, bits_per_sample, num_channels)
     
-    def repair_data_chunk(self, source_wave_file, wave_file, num_bytes, offset, end_offset):
+    def repair_data_chunk(self, source_wave_file, wave_file, num_bytes, offset, end_offset, application):
         print("Repairing and copying data chunk.")
         
         wave_file.write(b"data")
         current_offset = source_wave_file.tell()
         data_chunk_size = num_bytes - current_offset
         wave_file.write(struct.pack("<I", data_chunk_size)) # data chunk size (raw audio data size)
-        
-        self.copy_audio_data(source_wave_file, wave_file, num_bytes, current_offset, offset, end_offset)
+        default_end_offset = self.get_default_end_offset(num_bytes, application)
+        self.copy_audio_data(source_wave_file, wave_file, num_bytes, current_offset, offset, default_end_offset, end_offset)
     
     def is_decodable(self, byte_string):
         try:
@@ -749,7 +810,8 @@ class WaveHeaderProcessor():
                         comm_chunk_written = True
                         ssnd_chunk_written = True
                         audio_data_start_offset = self.get_aiff_data_start_offset(application)
-                        self.copy_audio_data(source_aiff_file, aiff_file, num_bytes, audio_data_start_offset, offset, end_offset)
+                        default_end_offset = self.get_default_end_offset(num_bytes, application)
+                        self.copy_audio_data(source_aiff_file, aiff_file, num_bytes, audio_data_start_offset, offset, default_end_offset, end_offset)
                         return True
                     
                     if chunk_size == 0:
@@ -757,7 +819,7 @@ class WaveHeaderProcessor():
                     
                     current_position = source_aiff_file.tell()
                     
-                    self.repair_aiff_chunk(source_aiff_file, aiff_file, chunk_name_bytes, chunk_size, sample_rate, bits_per_sample, num_channels, num_bytes, offset, end_offset)
+                    self.repair_aiff_chunk(source_aiff_file, aiff_file, chunk_name_bytes, chunk_size, sample_rate, bits_per_sample, num_channels, num_bytes, offset, end_offset, application)
                         
                     if source_aiff_file.tell() == current_position:
                         raise RuntimeError("No bytes consumed while processing '{}' chunk.".format(self.decode_bytes(chunk_name_bytes)))
@@ -890,11 +952,11 @@ class WaveHeaderProcessor():
         
         
     
-    def repair_aiff_chunk(self, source_aiff_file, aiff_file, chunk_name_bytes, chunk_size, sample_rate, bits_per_sample, num_channels, num_bytes, offset, end_offset):
+    def repair_aiff_chunk(self, source_aiff_file, aiff_file, chunk_name_bytes, chunk_size, sample_rate, bits_per_sample, num_channels, num_bytes, offset, end_offset, application):
         if chunk_name_bytes == b'COMM':
             self.repair_comm_chunk(source_aiff_file, aiff_file, chunk_size, sample_rate, bits_per_sample, num_channels)
         elif chunk_name_bytes == b'SSND':
-            self.repair_ssnd_chunk(source_aiff_file, aiff_file, num_bytes, offset, end_offset)
+            self.repair_ssnd_chunk(source_aiff_file, aiff_file, num_bytes, offset, end_offset, application)
         else:
             print("Copying {} chunk.".format(self.decode_bytes(chunk_name_bytes)))
             aiff_file.write(chunk_name_bytes)
@@ -923,7 +985,7 @@ class WaveHeaderProcessor():
         aiff_file.write(source_comm_chunk_bytes[18:])
         
     
-    def repair_ssnd_chunk(self, source_aiff_file, aiff_file, num_bytes, offset, end_offset):
+    def repair_ssnd_chunk(self, source_aiff_file, aiff_file, num_bytes, offset, end_offset, application):
         print("Repairing SSND chunk.")
         
         aiff_file.write(b"SSND")
@@ -935,12 +997,13 @@ class WaveHeaderProcessor():
         if offset is not None:
             aiff_file.write(struct.pack(">I", 0)) # offset
             aiff_file.write(struct.pack(">I", 0)) # block size
-            
-        self.copy_audio_data(source_aiff_file, aiff_file, num_bytes, current_offset, offset, end_offset)
         
-    def copy_audio_data(self, source_file, destination_file, num_bytes, default_offset, offset_argument, end_offset_argument):
+        default_end_offset = self.get_default_end_offset(num_bytes, application)
+        self.copy_audio_data(source_aiff_file, aiff_file, num_bytes, current_offset, offset, default_end_offset, end_offset)
+        
+    def copy_audio_data(self, source_file, destination_file, num_bytes, default_offset, offset_argument, default_end_offset, end_offset_argument):
         start_offset = default_offset if offset_argument is None else offset_argument
-        end_offset = num_bytes if end_offset_argument is None else end_offset_argument
+        end_offset = default_end_offset if end_offset_argument is None else end_offset_argument
         # if offset is negative, interpret as offset from the end of the file
         effective_start_offset = start_offset if start_offset >= 0 else num_bytes + start_offset
         effective_end_offset = end_offset if end_offset >= 0 else num_bytes + end_offset
@@ -954,7 +1017,12 @@ class WaveHeaderProcessor():
             source_file.seek(effective_start_offset)
         
         while True:
-            buffer_size = 4096 if end_offset_argument is None else min(4096, effective_end_offset - source_file.tell())
+            current_offset = source_file.tell()
+            if (current_offset >= effective_end_offset):
+                # stop copying if we reached the end offset
+                break
+            
+            buffer_size = min(4096, effective_end_offset - current_offset)
             buffer = source_file.read(buffer_size)
             if buffer:
                 destination_file.write(buffer)
