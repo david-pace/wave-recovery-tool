@@ -148,6 +148,8 @@ Examples are provided below.
 
 #### Examples
 
+Note that on all Windows systems, file system paths are separated with backslashes (`\`) instead of slashes (`/`).
+
 Restore audio files with
 
 - 44 kHz sample rate
@@ -188,6 +190,14 @@ Restore audio files with
 
 ```
 python3 wave-recovery-tool-master/waverecovery.py -r -s 96000 -b 24 -c 2 audio restored
+```
+
+### Enforcing Recovery Attempts
+
+By default, the tool will only recover files in which errors were detected explicitly. If only warnings were found (indicating only minor inconsistencies) no attempt to recover the files will be made. This might also be the case if the tool failed to detect errors correctly. If the recovery should be attempted nonetheless, the parameter `--force` (short: `-f`) can be provided as shown in the next example:
+
+```
+python3 wave-recovery-tool-master/waverecovery.py -r -f -s 96000 -b 24 -c 2 audio restored
 ```
 
 ### Specifying Applications
