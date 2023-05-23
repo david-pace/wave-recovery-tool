@@ -39,7 +39,7 @@ from utils import print_error,\
 from math import ceil
 
 __date__ = '2019-03-25'
-__updated__ = '2022-07-24'
+__updated__ = '2023-05-24'
 
 
 class WaveHeaderProcessor():
@@ -134,6 +134,12 @@ class WaveHeaderProcessor():
                 
             while wave_file.tell() < num_bytes:
                 chunk_header = wave_file.read(8)
+                
+                chunk_header_length = len(chunk_header)
+                if chunk_header_length < 8:
+                    error_with_condition(display, "Incomplete chunk header encountered (byte sequence {}). Expected at least 8 bytes, but got only {}. Aborting analysis.".format(chunk_header, chunk_header_length))
+                    return True
+                
                 chunk_name_bytes = chunk_header[:4]
                 
                 if not self.is_decodable(chunk_name_bytes):
@@ -308,13 +314,20 @@ class WaveHeaderProcessor():
             
             while aiff_file.tell() < num_bytes:
                 chunk_header = aiff_file.read(8)
+                
+                chunk_header_length = len(chunk_header)
+                if chunk_header_length < 8:
+                    found_error = True
+                    error_with_condition(display, "Incomplete chunk header encountered (byte sequence {}). Expected at least 8 bytes, but got only {}. Aborting analysis.".format(chunk_header, chunk_header_length))
+                    break
+                    
                 chunk_name_bytes = chunk_header[:4]
                 
                 if not self.is_decodable(chunk_name_bytes):
                     found_error = True
                     error_with_condition(display, "Invalid (non-printable) chunk name encountered (byte sequence {}). Aborting analysis.".format(chunk_name_bytes))
                     break
-                    
+                
                 chunk_size_bytes = chunk_header[4:8]
                 chunk_size = struct.unpack(">I", chunk_size_bytes)[0]
                 

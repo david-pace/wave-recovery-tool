@@ -29,6 +29,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 @deffield    updated: Updated
 '''
 
+import traceback
 import sys
 import os
 
@@ -38,9 +39,9 @@ from argparse import RawDescriptionHelpFormatter
 from waveheaderprocessor import WaveHeaderProcessor
 
 __all__ = []
-__version__ = '1.3.0'
+__version__ = '1.3.1'
 __date__ = '2019-03-25'
-__updated__ = '2022-07-24'
+__updated__ = '2023-05-24'
 
 DEBUG = 0
 TESTRUN = 0
@@ -149,6 +150,7 @@ USAGE
         ### handle keyboard interrupt ###
         return 0
     except Exception as e:
+        print(traceback.format_exc())
         if DEBUG or TESTRUN:
             raise(e)
         indent = len(program_name) * " "
