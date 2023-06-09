@@ -27,7 +27,7 @@ This tool is capable of reconstructing damaged WAVE and AIFF headers. This will 
 
 1. Download [Python 3](https://www.python.org/downloads/)
 2. Install Python 3. If the installation provides an option to add Python 3 to your environment variables (especially the `PATH` variable), then enable it. You might have to look for "customized" or "advanced" options for that. Remember the location where Python 3 was installed.
-3. On the [Github page of Wave Recovery Tool](https://github.com/davehofmann/wave-recovery-tool), click the green **Code** button at the top right corner of the page, then click **Download ZIP** and save the ZIP file to your Desktop.
+3. On the [Github page of Wave Recovery Tool](https://github.com/david-pace/wave-recovery-tool), click the green **Code** button at the top right corner of the page, then click **Download ZIP** and save the ZIP file to your Desktop.
 4. Extract the downloaded ZIP file. This should result in a folder named `wave-recovery-tool-master` containing the program on your Desktop.
 5. Locate the damaged audio files. If you used Logic, these will be located near your project file in a folder named `Media/Audio Files`. If you saved your project to a `.logicx` container, the contents can be shown in Finder by right-clicking the `.logicx` file and choosing *Show Package Contents*.
 6. Create a folder named `audio` on your Desktop and copy the damaged audio files into that folder. 

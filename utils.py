@@ -5,7 +5,7 @@
  
 Utility functions for the wave recovery tool.
 
-Copyright (C) 2019 David Hofmann
+Copyright (C) 2019 David Pace
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -20,11 +20,11 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
  
-@author:     David Hofmann
+@author:     David Pace
 
 @license:    GNU General Public License Version 3
 
-@contact:    dev@davehofmann.de
+@contact:    dev@davidpace.de
 
 @deffield    updated: Updated
 '''
