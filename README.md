@@ -24,7 +24,7 @@ Wave Recovery Tool is developed by David Pace &lt;dev@davidpace.de&gt;
 
 ## Author GUI 
 
-Wave Recovery Tool GUI is developed by DRCRecoveryData &lt;hanaloginstrumnets@gmail.com&gt;
+Wave Recovery Tool GUI is developed by DRCRecoveryData &lt;haânloginstruments@gmail.com&gt;
 
 ## Prerequisites
 
