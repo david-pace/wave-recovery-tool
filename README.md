@@ -1,4 +1,4 @@
-# Wave Recovery Tool GUI
+# Wave Recovery Tool
 
 ![Screenshot from 2023-09-15 03-38-09](https://github.com/DRCRecoveryData/wave-recovery-tool-gui/assets/85211068/80eadf09-e3c5-4da8-916d-a4d3abc0cbbe)
 
@@ -60,9 +60,13 @@ This tool is capable of reconstructing damaged WAVE and AIFF headers. This will 
     * If you used a sample rate of 48 kHz, you have to add `-s 48000` before `audio`.
     * If the files have two channels (i.e. stereo instead of mono), then you have to add `-c 2` before `audio`.
     * See section *Restoring Damaged WAVE/AIFF File Headers* for more details.
-14. Install Pyqt5
+14. Windows: Install Pyqt5
     ```
     pip install pyqt5
+    ```
+    Mac: Install Pyqt5
+    ```
+    brew install pyqt5
     ```
     
 ### Locating Python 3
@@ -255,6 +259,7 @@ For example, the following command line will copy audio data starting at offset 
 ```
 python3 wave-recovery-tool-master/waverecovery.py -r -s 96000 -b 24 -o 153608 -e -334
 ```
+
 ### GUI
 
 Just run: ``` Python3 waverecovery-gui.py ```
