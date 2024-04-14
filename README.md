@@ -260,7 +260,7 @@ python3 wave-recovery-tool-master/waverecovery.py -r -s 96000 -b 24 -o 153608 -e
 
 ### GUI
 
-Just run: ``` Python3 waverecovery-gui.py ```
+Just run: ``` Python3 waverecoverygui.py ```
 
 ## Donations
 
