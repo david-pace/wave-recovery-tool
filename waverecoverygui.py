@@ -263,8 +263,8 @@ class WaveRecoveryToolGUI(QMainWindow):
                 return
 
         sample_rate = self.sample_rate_spinbox.value()
-        bits_per_sample = self.bits_per_sample_spinbox.value()
-        channels = self.channels_spinbox.value()
+        bits_per_sample = int(self.bits_per_sample_combobox.currentText())
+        channels = int(self.channels_combobox.currentText().split()[0])
         force = self.force_checkbox.isChecked()
         application = self.application_combo.currentText()
         offset = self.offset_spinbox.value() if self.use_offset_checkbox.isChecked() else None
