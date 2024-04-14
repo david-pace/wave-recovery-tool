@@ -1,10 +1,9 @@
 import sys
-from argparse import ArgumentParser, Namespace
+from argparse import Namespace
 from PyQt5.QtWidgets import (
     QApplication,
     QMainWindow,
     QWidget,
-    QVBoxLayout,
     QLabel,
     QPushButton,
     QTextEdit,
@@ -17,11 +16,11 @@ from PyQt5.QtWidgets import (
     QProgressBar,
     QHBoxLayout,
 )
-from PyQt5.QtCore import Qt, QThread, pyqtSignal
+from PyQt5.QtCore import QThread, pyqtSignal
 import io
 from contextlib import redirect_stdout
 from waveheaderprocessor import WaveHeaderProcessor
-from PyQt5.QtGui import QTextCursor, QTextCharFormat, QColor
+from PyQt5.QtGui import QTextCursor, QTextCharFormat, QColor, QIntValidator
 
 class WorkerThread(QThread):
     update_progress = pyqtSignal(int)
@@ -105,22 +104,59 @@ class WaveRecoveryToolGUI(QMainWindow):
         dest_path_layout.addWidget(self.browse_dest_button)
 
         self.sample_rate_label = QLabel('Sample Rate:')
+        self.sample_rate_combobox = QComboBox()
+        self.sample_rate_combobox.setEditable(True)
+
+        # Add predefined sample rates to the combobox
+        sample_rates = ['8000', '44100', '48000', '88200', '96000', '192000']
+        self.sample_rate_combobox.addItems(sample_rates)
+
+        # Set the default/pre-selected sample rate
+        default_sample_rate = '44100'
+        self.sample_rate_combobox.setCurrentText(default_sample_rate)
+
+        # Set validator to allow only numeric input
+        validator = QIntValidator()
+        self.sample_rate_combobox.setValidator(validator)
+
+        self.sample_rate_label = QLabel('Sample Rate:')
         self.sample_rate_spinbox = QSpinBox()
         self.sample_rate_spinbox.setMinimum(1)
         self.sample_rate_spinbox.setMaximum(999999)
         self.sample_rate_spinbox.setValue(44100)
 
         self.bits_per_sample_label = QLabel('Bits Per Sample:')
-        self.bits_per_sample_spinbox = QSpinBox()
-        self.bits_per_sample_spinbox.setMinimum(1)
-        self.bits_per_sample_spinbox.setMaximum(64)
-        self.bits_per_sample_spinbox.setValue(16)
+        self.bits_per_sample_combobox = QComboBox()
+        self.bits_per_sample_combobox.setEditable(True)
+
+        # Add predefined bits per sample to the combobox
+        bits_per_sample_values = ['8', '16', '24', '32']
+        self.bits_per_sample_combobox.addItems(bits_per_sample_values)
+
+        # Set the default/pre-selected bits per sample
+        default_bits_per_sample = '16'
+        self.bits_per_sample_combobox.setCurrentText(default_bits_per_sample)
+
+        # Set validator to allow only numeric input
+        validator = QIntValidator()
+        self.bits_per_sample_combobox.setValidator(validator)
 
         self.channels_label = QLabel('Channels:')
-        self.channels_spinbox = QSpinBox()
-        self.channels_spinbox.setMinimum(1)
-        self.channels_spinbox.setMaximum(256)
-        self.channels_spinbox.setValue(1)
+        self.channels_combobox = QComboBox()
+        self.channels_combobox.setEditable(True)
+
+        # Add predefined channel values to the combobox
+        channel_values = ['1', '2']
+        channel_labels = ['1 (Mono)', '2 (Stereo)']
+        self.channels_combobox.addItems(channel_labels)
+
+        # Set the default/pre-selected number of channels
+        default_channels = '1'
+        self.channels_combobox.setCurrentText(default_channels)
+
+        # Set validator to allow only numeric input
+        validator = QIntValidator()
+        self.channels_combobox.setValidator(validator)
 
         self.force_checkbox = QCheckBox('Force Restoration (No Error Check)')
 
@@ -130,7 +166,7 @@ class WaveRecoveryToolGUI(QMainWindow):
         self.application_combo.addItem('live')
         self.application_combo.addItem('djvu')
 
-        self.use_offset_checkbox = QCheckBox('Use Offset')
+        self.use_offset_checkbox = QCheckBox('Specify Custom Offsets')
         self.use_offset_checkbox.stateChanged.connect(self.toggle_offset_fields)
 
         self.offset_label = QLabel('Start Offset:')
@@ -149,8 +185,8 @@ class WaveRecoveryToolGUI(QMainWindow):
         form_layout.addRow(self.source_path_label, source_path_layout)
         form_layout.addRow(self.dest_path_label, dest_path_layout)
         form_layout.addRow(self.sample_rate_label, self.sample_rate_spinbox)
-        form_layout.addRow(self.bits_per_sample_label, self.bits_per_sample_spinbox)
-        form_layout.addRow(self.channels_label, self.channels_spinbox)
+        form_layout.addRow(self.bits_per_sample_label, self.bits_per_sample_combobox)
+        form_layout.addRow(self.channels_label, self.channels_combobox)
         form_layout.addWidget(self.force_checkbox)
         form_layout.addRow(self.application_label, self.application_combo)
         form_layout.addRow(self.use_offset_checkbox)
@@ -217,6 +253,15 @@ class WaveRecoveryToolGUI(QMainWindow):
 
         source_path = self.source_path_text.toPlainText()
         dest_path = self.dest_path_text.toPlainText()
+        if not source_path:
+            QMessageBox.critical(self, "Error", "Please select a source file or folder before starting the recovery.")
+            self.restore_button.setDisabled(False)
+            return
+            if not dest_path:
+                QMessageBox.critical(self, "Error", "Please select a destination file or folder before starting the recovery.")
+                self.restore_button.setDisabled(False)
+                return
+
         sample_rate = self.sample_rate_spinbox.value()
         bits_per_sample = self.bits_per_sample_spinbox.value()
         channels = self.channels_spinbox.value()
