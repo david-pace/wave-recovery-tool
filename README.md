@@ -1,12 +1,17 @@
 # Wave Recovery Tool
 
-![Screenshot from 2023-09-15 03-38-09](https://github.com/DRCRecoveryData/wave-recovery-tool-gui/assets/85211068/80eadf09-e3c5-4da8-916d-a4d3abc0cbbe)
+
+![2024-04-17_201251](https://github.com/DRCRecoveryData/wave-recovery-tool-gui/assets/85211068/683100eb-e698-45cc-a284-203d9e3f8ed5)
 
 
 ## Demo:
 
 
-[Screencast from 09-15-2023 03:36:05 AM.webm](https://github.com/DRCRecoveryData/wave-recovery-tool-gui/assets/85211068/03276cd2-366f-490a-bf07-8e409a06c099)
+
+
+https://github.com/DRCRecoveryData/wave-recovery-tool-gui/assets/85211068/c053029c-d326-4e4b-80c7-a50a51e58013
+
+
 
 
 
