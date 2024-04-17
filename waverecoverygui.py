@@ -69,7 +69,7 @@ class WaveRecoveryToolGUI(QMainWindow):
 
     def initUI(self):
         self.setWindowTitle('Wave Recovery Tool GUI')
-        self.setGeometry(100, 100, 200, 200)
+        self.setGeometry(100, 100, 600, 200)
 
         self.central_widget = QWidget(self)
         self.setCentralWidget(self.central_widget)
@@ -116,10 +116,13 @@ class WaveRecoveryToolGUI(QMainWindow):
         self.sample_rate_combobox.setCurrentText(default_sample_rate)
 
         # Set validator to allow only numeric input
-        validator = QIntValidator()
-        self.sample_rate_combobox.setValidator(validator)
+        self.sample_rate_combobox = QComboBox()
+        self.sample_rate_combobox.addItem("44100")
+        self.sample_rate_combobox.addItem("48000")
+        self.sample_rate_combobox.addItem("96000")
 
         self.sample_rate_label = QLabel('Sample Rate:')
+
         self.sample_rate_spinbox = QSpinBox()
         self.sample_rate_spinbox.setMinimum(1)
         self.sample_rate_spinbox.setMaximum(999999)
@@ -173,18 +176,29 @@ class WaveRecoveryToolGUI(QMainWindow):
         self.offset_spinbox = QSpinBox()
         self.offset_spinbox.setMinimum(-999999)
         self.offset_spinbox.setMaximum(999999)
+        self.offset_label.setEnabled(False)  # Disable the offset label initially
+        self.offset_spinbox.setEnabled(False)  # Disable the offset spinbox initially
 
         self.end_offset_label = QLabel('End Offset:')
         self.end_offset_spinbox = QSpinBox()
         self.end_offset_spinbox.setMinimum(-999999)
         self.end_offset_spinbox.setMaximum(999999)
+        self.end_offset_label.setEnabled(False)  # Disable the end offset label initially
+        self.end_offset_spinbox.setEnabled(False)  # Disable the end offset spinbox initially
 
         self.version_checkbox = QCheckBox('Version (-v)')
         self.verbose_checkbox = QCheckBox('Verbose (-V)')
 
         form_layout.addRow(self.source_path_label, source_path_layout)
         form_layout.addRow(self.dest_path_label, dest_path_layout)
-        form_layout.addRow(self.sample_rate_label, self.sample_rate_spinbox)
+        #form_layout.addRow(self.sample_rate_label, self.sample_rate_spinbox)
+
+        self.sample_rate_combobox = QComboBox()
+        self.sample_rate_combobox.addItem("44100")
+        self.sample_rate_combobox.addItem("48000")
+        self.sample_rate_combobox.addItem("96000")
+
+        form_layout.addRow(self.sample_rate_label, self.sample_rate_combobox) 
         form_layout.addRow(self.bits_per_sample_label, self.bits_per_sample_combobox)
         form_layout.addRow(self.channels_label, self.channels_combobox)
         form_layout.addWidget(self.force_checkbox)
