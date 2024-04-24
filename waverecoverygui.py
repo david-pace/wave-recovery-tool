@@ -1,6 +1,6 @@
 import sys
 from argparse import Namespace
-from PyQt5.QtWidgets import (
+from PyQt6.QtWidgets import (
     QApplication,
     QMainWindow,
     QWidget,
@@ -16,11 +16,11 @@ from PyQt5.QtWidgets import (
     QProgressBar,
     QHBoxLayout,
 )
-from PyQt5.QtCore import QThread, pyqtSignal
+from PyQt6.QtCore import QThread, pyqtSignal
 import io
 from contextlib import redirect_stdout
 from waveheaderprocessor import WaveHeaderProcessor
-from PyQt5.QtGui import QTextCursor, QTextCharFormat, QColor, QIntValidator
+from PyQt6.QtGui import QTextCursor, QTextCharFormat, QColor, QIntValidator
 
 class WorkerThread(QThread):
     update_progress = pyqtSignal(int)
@@ -271,12 +271,12 @@ class WaveRecoveryToolGUI(QMainWindow):
             QMessageBox.critical(self, "Error", "Please select a source file or folder before starting the recovery.")
             self.restore_button.setDisabled(False)
             return
-            if not dest_path:
-                QMessageBox.critical(self, "Error", "Please select a destination file or folder before starting the recovery.")
-                self.restore_button.setDisabled(False)
-                return
+        if not dest_path:
+            QMessageBox.critical(self, "Error", "Please select a destination file or folder before starting the recovery.")
+            self.restore_button.setDisabled(False)
+            return
 
-        sample_rate = self.sample_rate_spinbox.value()
+        sample_rate = int(self.sample_rate_combobox.currentText())
         bits_per_sample = int(self.bits_per_sample_combobox.currentText())
         channels = int(self.channels_combobox.currentText().split()[0])
         force = self.force_checkbox.isChecked()
@@ -327,8 +327,7 @@ class WaveRecoveryToolGUI(QMainWindow):
 
         if self.verbose_checkbox.isChecked():
             self.log_box.insertPlainText(log_message)
-            self.log_box.moveCursor(QTextCursor.End)
-            self.log_box.ensureCursorVisible()
+            self.log_box.moveCursor(QTextCursor.MoveOperation.End)
 
     def restore_completed(self):
         self.restore_button.setDisabled(False)
@@ -342,13 +341,14 @@ class WaveRecoveryToolGUI(QMainWindow):
         for thread in self.worker_threads:
             thread.quit()
             thread.wait()
+            thread.finished.disconnect()
 
 def main():
     app = QApplication(sys.argv)
-    QApplication.setStyle("Fusion")  # Apply Fusion style for rounded corners
+    app.setStyle("Fusion")  # Apply Fusion style for rounded corners
     window = WaveRecoveryToolGUI()
     window.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
 
 if __name__ == '__main__':
     main()
