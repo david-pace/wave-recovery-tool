@@ -16,40 +16,73 @@ from PyQt6.QtWidgets import (
     QProgressBar,
     QHBoxLayout,
 )
-from PyQt6.QtCore import QThread, pyqtSignal
-import io
+from PyQt6.QtCore import QThread, pyqtSignal, QObject, pyqtSlot
 from contextlib import redirect_stdout
 from waveheaderprocessor import WaveHeaderProcessor
 from PyQt6.QtGui import QTextCursor, QTextCharFormat, QColor, QIntValidator
+from queue import Queue
 
-class WorkerThread(QThread):
+
+class TransferStream(object):
+    """This stream is used as a replacement for the standard output stream.
+    
+    It puts everything that would be printed to `stdout` to a queue instead.
+    """
+    def __init__(self, queue: Queue):
+        self.queue = queue
+        
+    def write(self, text):
+        self.queue.put(text)
+        
+    def flush(self):
+        # nothing to flush
+        pass
+
+class TransferWorker(QObject):
+    """Implementation for a thread that transfers strings from a queue to a QT signal."""
+    console_signal = pyqtSignal(str)
+    
+    def __init__(self, queue):
+        QObject.__init__(self)
+        self.queue = queue
+    
+    @pyqtSlot()
+    def run(self):
+        while True:
+            text = self.queue.get()
+            if text is None:
+                break;
+            self.console_signal.emit(text)
+        QThread.currentThread().quit()
+
+class Worker(QObject):
+    """Thread implementation that executes the actual work by calling the Wave Recovery Tool."""
     update_progress = pyqtSignal(int)
     update_log = pyqtSignal(str, bool)
-
+    finished = pyqtSignal()
+    
     def __init__(self, args):
-        super().__init__()
+        QObject.__init__(self)
         self.args = args
 
+    @pyqtSlot()
     def run(self):
         try:
-            with io.StringIO() as buf, redirect_stdout(buf):
-                processor = WaveHeaderProcessor()
-                total_files = processor.repair_audio_file_headers(
-                    self.args.source_path,
-                    self.args.destination_path,
-                    self.args.sample_rate,
-                    self.args.bits_per_sample,
-                    self.args.channels,
-                    self.args.verbose,
-                    self.args.force,
-                    self.args.application,
-                    self.args.offset,
-                    self.args.end_offset,
-                )
-                output = buf.getvalue()
-
+            processor = WaveHeaderProcessor()
+            total_files = processor.repair_audio_file_headers(
+                self.args.source_path,
+                self.args.destination_path,
+                self.args.sample_rate,
+                self.args.bits_per_sample,
+                self.args.channels,
+                self.args.verbose,
+                self.args.force,
+                self.args.application,
+                self.args.offset,
+                self.args.end_offset,
+            )
+            
             self.update_progress.emit(total_files)
-            self.update_log.emit(output, False)
 
         except Exception as e:
             error_message = f'Error: {str(e)}'
@@ -57,19 +90,33 @@ class WorkerThread(QThread):
             QMessageBox.critical(self.args.gui, 'Error', error_message)
         finally:
             self.args.gui.restore_button.setDisabled(False)
+        
+        self.finished.emit()
 
 class WaveRecoveryToolGUI(QMainWindow):
-    def __init__(self):
+    def __init__(self, queue, transfer_stream):
         super().__init__()
-
-        # Initialize a list of worker threads
-        self.worker_threads = []
+        self.queue = queue
+        self.transfer_stream = transfer_stream
 
         self.initUI()
+        self.initThreads()
+        
+    def initThreads(self):
+        # start a thread that transfers everything from the former standard output to the text area of the application
+        self.transfer_thread = QThread(self) 
+        self.transfer_worker = TransferWorker(self.queue)
+        self.transfer_worker.moveToThread(self.transfer_thread)
+        self.transfer_thread.started.connect(self.transfer_worker.run)
+        self.transfer_worker.console_signal.connect(self.update_console)
+        self.transfer_thread.start()
+        
+        # the worker thread is created later when we start the recovery operation
+        self.worker_thread = None
 
     def initUI(self):
         self.setWindowTitle('Wave Recovery Tool GUI')
-        self.setGeometry(100, 100, 600, 200)
+        self.setGeometry(100, 100, 600, 400)
 
         self.central_widget = QWidget(self)
         self.setCentralWidget(self.central_widget)
@@ -222,6 +269,10 @@ class WaveRecoveryToolGUI(QMainWindow):
             QPushButton:hover, QTextEdit:hover {
                 background-color: #005F99;
             }
+            
+            QPushButton:disabled {
+                background-color: #AAAAAA
+            }
         '''
 
         self.restore_button = QPushButton('Restore')
@@ -232,10 +283,11 @@ class WaveRecoveryToolGUI(QMainWindow):
         self.browse_source_button.setStyleSheet(button_style)  # Apply the style to the "Browse" button
         self.browse_dest_button.setStyleSheet(button_style)  # Apply the style to the "Browse" button
 
-        self.cancel_all_button = QPushButton('Cancel All')
-        self.cancel_all_button.clicked.connect(self.cancel_all_threads)
-        self.cancel_all_button.setStyleSheet(button_style)  # Apply the style to the button
-        form_layout.addRow(self.cancel_all_button)
+        self.cancel_button = QPushButton('Cancel')
+        self.cancel_button.clicked.connect(self.cancel)
+        self.cancel_button.setStyleSheet(button_style)  # Apply the style to the button
+        self.cancel_button.setDisabled(True)
+        form_layout.addRow(self.cancel_button)
 
         self.progress_bar = QProgressBar()
         self.progress_bar.setStyleSheet("QProgressBar::chunk { background-color: green; } QProgressBar { text-align: center; color: white; border-radius: 10px; }")
@@ -243,6 +295,7 @@ class WaveRecoveryToolGUI(QMainWindow):
 
         self.log_box = QTextEdit()
         self.log_box.setReadOnly(True)
+        self.log_box.setMinimumHeight(200)
         form_layout.addRow(self.log_box)
 
         self.central_widget.setLayout(form_layout)
@@ -264,7 +317,8 @@ class WaveRecoveryToolGUI(QMainWindow):
 
     def restore(self):
         self.restore_button.setDisabled(True)
-
+        self.log_box.setText("")
+        
         source_path = self.source_path_text.toPlainText()
         dest_path = self.dest_path_text.toPlainText()
         if not source_path:
@@ -304,18 +358,31 @@ class WaveRecoveryToolGUI(QMainWindow):
 
         self.progress_bar.setValue(0)
         self.progress_bar.setFormat('%p%')
-
-        worker_thread = WorkerThread(args)
-        worker_thread.update_progress.connect(self.update_progress)
-        worker_thread.update_log.connect(self.update_log)
-        worker_thread.finished.connect(self.restore_completed)
-
-        self.worker_threads.append(worker_thread)
-
-        worker_thread.start()
+        
+        self.worker_thread = QThread(self)
+        self.worker = Worker(args)
+        self.worker.moveToThread(self.worker_thread)
+        
+        self.worker_thread.started.connect(self.worker.run)
+        self.worker.finished.connect(self.worker_thread.quit)
+        self.worker.finished.connect(self.worker.deleteLater)
+        self.worker.finished.connect(self.worker_thread.deleteLater)
+        
+        self.worker_thread.finished.connect(self.restore_completed)
+        
+        self.worker.update_progress.connect(self.update_progress)
+        self.worker.update_log.connect(self.update_log)
+        
+        self.worker_thread.start()
+        
+        self.cancel_button.setDisabled(False)
 
     def update_progress(self, value):
         self.progress_bar.setValue(value)
+    
+    @pyqtSlot(str)
+    def update_console(self, text):
+        self.update_log(text)
 
     def update_log(self, log_message, is_error=False):
         log_color = 'green' if not is_error else 'red'
@@ -325,30 +392,39 @@ class WaveRecoveryToolGUI(QMainWindow):
         text_cursor = self.log_box.textCursor()
         text_cursor.mergeCharFormat(text_format)
 
-        if self.verbose_checkbox.isChecked():
-            self.log_box.insertPlainText(log_message)
-            self.log_box.moveCursor(QTextCursor.MoveOperation.End)
+        self.log_box.insertPlainText(log_message)
+        self.log_box.moveCursor(QTextCursor.MoveOperation.End)
 
     def restore_completed(self):
         self.restore_button.setDisabled(False)
+        self.cancel_button.setDisabled(True)
         self.progress_bar.setValue(100)
         self.progress_bar.setFormat('100%')
-
-        sender_thread = self.sender()
-        self.worker_threads.remove(sender_thread)
-
-    def cancel_all_threads(self):
-        for thread in self.worker_threads:
-            thread.quit()
-            thread.wait()
-            thread.finished.disconnect()
+        
+        self.worker_thread = None
+        
+    def cancel(self):
+        if self.worker_thread:
+            self.worker_thread.finished.disconnect()
+            self.worker_thread.quit()
+            self.worker_thread.wait()
+            self.worker_thread = None
+    
+    def closeEvent(self, *args, **kwargs):
+        if self.transfer_worker:
+            self.queue.put(None) # causes end of loop in transfer thread
 
 def main():
     app = QApplication(sys.argv)
     app.setStyle("Fusion")  # Apply Fusion style for rounded corners
-    window = WaveRecoveryToolGUI()
-    window.show()
-    sys.exit(app.exec())
+    
+    queue = Queue()
+    transfer_stream = TransferStream(queue)
+    
+    with redirect_stdout(transfer_stream):
+        window = WaveRecoveryToolGUI(queue, transfer_stream)
+        window.show()
+        sys.exit(app.exec())
 
 if __name__ == '__main__':
     main()
