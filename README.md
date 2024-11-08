@@ -1,5 +1,20 @@
 # Wave Recovery Tool
 
+
+![2024-04-17_201251](https://github.com/DRCRecoveryData/wave-recovery-tool-gui/assets/85211068/683100eb-e698-45cc-a284-203d9e3f8ed5)
+
+
+## Demo:
+
+
+
+
+https://github.com/DRCRecoveryData/wave-recovery-tool-gui/assets/85211068/c053029c-d326-4e4b-80c7-a50a51e58013
+
+
+
+
+
 Tool to display WAVE/AIFF file header information and to restore corrupted WAVE/AIFF file headers.
 
 This program was originally developed to recover damaged audio files which were destroyed due to a bug in the audio application *Logic*. See [this blog post](https://www.davidpace.de/when-logic-destroys-your-audio-files/) for more details.
@@ -46,7 +61,15 @@ This tool is capable of reconstructing damaged WAVE and AIFF headers. This will 
     * If you used a sample rate of 48 kHz, you have to add `-s 48000` before `audio`.
     * If the files have two channels (i.e. stereo instead of mono), then you have to add `-c 2` before `audio`.
     * See section *Restoring Damaged WAVE/AIFF File Headers* for more details.
-
+14. Windows: Install Pyqt5
+    ```
+    pip install pyqt5
+    ```
+    Mac: Install Pyqt5
+    ```
+    brew install pyqt5
+    ```
+    
 ### Locating Python 3
  
 In case you get an error message like `command not found` in step 9, you have to replace `python` or `python3` with the absolute path to your python executable. On Windows, the command line looks like this:
@@ -237,6 +260,10 @@ For example, the following command line will copy audio data starting at offset 
 ```
 python3 wave-recovery-tool-master/waverecovery.py -r -s 96000 -b 24 -o 153608 -e -334
 ```
+
+### GUI
+
+Just run: ``` Python3 waverecoverygui.py ```
 
 ## Donations
 
