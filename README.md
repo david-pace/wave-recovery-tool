@@ -1,20 +1,5 @@
 # Wave Recovery Tool
 
-
-![2024-04-17_201251](https://github.com/DRCRecoveryData/wave-recovery-tool-gui/assets/85211068/683100eb-e698-45cc-a284-203d9e3f8ed5)
-
-
-## Demo:
-
-
-
-
-https://github.com/DRCRecoveryData/wave-recovery-tool-gui/assets/85211068/c053029c-d326-4e4b-80c7-a50a51e58013
-
-
-
-
-
 Tool to display WAVE/AIFF file header information and to restore corrupted WAVE/AIFF file headers.
 
 This program was originally developed to recover damaged audio files which were destroyed due to a bug in the audio application *Logic*. See [this blog post](https://www.davidpace.de/when-logic-destroys-your-audio-files/) for more details.
@@ -23,9 +8,10 @@ This program was originally developed to recover damaged audio files which were 
 
 Wave Recovery Tool is licensed under the terms of the GNU General Public License Version 3.
 
-## Author
+## Authors
 
 Wave Recovery Tool is developed by David Pace &lt;dev@davidpace.de&gt;
+The Graphical User Interface is a contribution by DRCRecoveryData &lt;hanaloginstruments@gmail.com&gt;
 
 ## Prerequisites
 
@@ -38,14 +24,51 @@ This tool is capable of reconstructing damaged WAVE and AIFF headers. This will 
 * You hear noise
 * You simply hear nothing
 
-## Step by Step Instructions
+## Graphical User Interface
+
+![2024-04-17_201251](https://github.com/DRCRecoveryData/wave-recovery-tool-gui/assets/85211068/683100eb-e698-45cc-a284-203d9e3f8ed5)
+
+
+## Demo
+
+https://github.com/DRCRecoveryData/wave-recovery-tool-gui/assets/85211068/c053029c-d326-4e4b-80c7-a50a51e58013
+
+## Step by Step Instructions with Graphical User Interface
+
+**Note:** Alternative instructions for Mac users are provided below.
+
+1. Download [Python 3](https://www.python.org/downloads/)
+2. Install Python 3
+3. Open a Terminal / Command Line
+4. Install PyQt6 with the following command: `pip install pyqt6` (on some systems, the command might be `pip3 install pyqt6`)
+5. On the [Github page of Wave Recovery Tool](https://github.com/david-pace/wave-recovery-tool), click the green **Code** button at the top right corner of the page, then click **Download ZIP** and save the ZIP file to your Desktop.
+6. Extract the downloaded ZIP file. This should result in a folder named `wave-recovery-tool-master` containing the program on your Desktop.
+7. Locate the damaged audio files. If you used Logic, these will be located near your project file in a folder named `Media/Audio Files`. If you saved your project to a `.logicx` container, the contents can be shown in Finder by right-clicking the `.logicx` file and choosing *Show Package Contents*.
+8. Create a folder named `audio` on your desktop and copy the damaged audio files into that folder.
+9. Create an empty folder called `restored` on your desktop.
+10. Open the folder `wave-recovery-tool-master` on your desktop and double-click the file `waverecoverygui.py`. The graphical user interface should appear. If this should not happen, the GUI has to be started from the command line. Open a terminal, `cd` into the `wave-recovery-tool-master` directory on your `Desktop`, and run `python waverecoverygui.py` (or on some systems `python3 waverecoverygui.py`).
+11. Use the folder `audio` on your desktop as source folder.
+12. Use the folder `restored` on your desktop as destination folder.
+13. Provide the sample rate, bit depth and number of channels that were used while recording the damaged audio files.
+14. Click *Restore*.
+15. Try playing back the files in the `restored` folder **with a low loudness/volume level**, as they might be distorted.
+16. If the sound is distorted or you hear nothing, you have to repeat from step 13, but this time try other parameters.
+
+### Alternative instructions for Mac users
+
+1. Install Homebrew as described on (brew.sh)[https://brew.sh/].
+2. Run `brew install python3` in a terminal to install Python 3.
+3. Run `brew install pyqt6` to install PyQt6.
+4. Proceed with step 5 above.
+
+## Step by Step Instructions for Command Line Usage
 
 1. Download [Python 3](https://www.python.org/downloads/)
 2. Install Python 3. If the installation provides an option to add Python 3 to your environment variables (especially the `PATH` variable), then enable it. You might have to look for "customized" or "advanced" options for that. Remember the location where Python 3 was installed.
 3. On the [Github page of Wave Recovery Tool](https://github.com/david-pace/wave-recovery-tool), click the green **Code** button at the top right corner of the page, then click **Download ZIP** and save the ZIP file to your Desktop.
 4. Extract the downloaded ZIP file. This should result in a folder named `wave-recovery-tool-master` containing the program on your Desktop.
 5. Locate the damaged audio files. If you used Logic, these will be located near your project file in a folder named `Media/Audio Files`. If you saved your project to a `.logicx` container, the contents can be shown in Finder by right-clicking the `.logicx` file and choosing *Show Package Contents*.
-6. Create a folder named `audio` on your Desktop and copy the damaged audio files into that folder. 
+6. Create a folder named `audio` on your desktop and copy the damaged audio files into that folder. 
 7. Open a terminal application. Depending on your operating system, it is called **Command Line**, **Terminal** or similar.
 8. Each terminal has a so called **working directory**, which is the file system context for executed programs. Typically, the terminal starts in your user directory. On Windows, this might be something like `C:\Users\homersimpson`, on Unix-based/Mac systems it is something like `/Users/homersimpson`. This directory is sometimes abbreviated as `~`. When a terminal is started, the current working directory is usually your user directory. Enter the command `cd Desktop` and hit enter to make `Desktop` your working directory. Hint: you can usually use the TAB key to auto-complete the folder names.
 9. Analyze the audio files in your `audio` folder by entering one of the following commands:
@@ -61,14 +84,6 @@ This tool is capable of reconstructing damaged WAVE and AIFF headers. This will 
     * If you used a sample rate of 48 kHz, you have to add `-s 48000` before `audio`.
     * If the files have two channels (i.e. stereo instead of mono), then you have to add `-c 2` before `audio`.
     * See section *Restoring Damaged WAVE/AIFF File Headers* for more details.
-14. Windows: Install Pyqt5
-    ```
-    pip install pyqt5
-    ```
-    Mac: Install Pyqt5
-    ```
-    brew install pyqt5
-    ```
     
 ### Locating Python 3
  
@@ -86,7 +101,7 @@ Note that you have to add quotes around the python path if it contains spaces (l
 
 Of course, you have to replace the python executable paths with the actual paths on your system where Python3 was installed (the path you remembered in step 1 of the step-by-step instructions).
 
-## Usage
+## Command Line Usage
 
 The tool provides two functionalities:
 
@@ -260,10 +275,6 @@ For example, the following command line will copy audio data starting at offset 
 ```
 python3 wave-recovery-tool-master/waverecovery.py -r -s 96000 -b 24 -o 153608 -e -334
 ```
-
-### GUI
-
-Just run: ``` Python3 waverecoverygui.py ```
 
 ## Donations
 
