@@ -10,8 +10,8 @@ Wave Recovery Tool is licensed under the terms of the GNU General Public License
 
 ## Authors
 
-Wave Recovery Tool is developed by David Pace &lt;dev@davidpace.de&gt;
-The Graphical User Interface is a contribution by DRCRecoveryData &lt;hanaloginstruments@gmail.com&gt;
+* The Wave Recovery Tool core is developed by David Pace &lt;dev@davidpace.de&gt;
+* The Graphical User Interface is a highly appreciated contribution by DRCRecoveryData &lt;hanaloginstruments@gmail.com&gt;
 
 ## Prerequisites
 
