@@ -46,7 +46,7 @@ https://github.com/DRCRecoveryData/wave-recovery-tool-gui/assets/85211068/c05302
 7. Locate the damaged audio files. If you used Logic, these will be located near your project file in a folder named `Media/Audio Files`. If you saved your project to a `.logicx` container, the contents can be shown in Finder by right-clicking the `.logicx` file and choosing *Show Package Contents*.
 8. Create a folder named `audio` on your desktop and copy the damaged audio files into that folder.
 9. Create an empty folder called `restored` on your desktop.
-10. Open the folder `wave-recovery-tool-master` on your desktop and double-click the file `waverecoverygui.py`. The graphical user interface should appear. If this should not happen, the GUI has to be started from the command line. Open a terminal, `cd` into the `wave-recovery-tool-master` directory on your `Desktop`, and run `python waverecoverygui.py` (or on some systems `python3 waverecoverygui.py`).
+10. Open the folder `wave-recovery-tool-master` on your desktop and double-click the file `waverecoverygui.py`. The graphical user interface should appear. If this should not happen, the GUI has to be started from the command line. Open a terminal, navigate into the `wave-recovery-tool-master` directory on your `Desktop` using the commands `cd Desktop` and `cd wave-recovery-tool-master`, then finally run `python waverecoverygui.py` (on some systems, the command might be `python3 waverecoverygui.py`).
 11. Use the folder `audio` on your desktop as source folder.
 12. Use the folder `restored` on your desktop as destination folder.
 13. Provide the sample rate, bit depth and number of channels that were used while recording the damaged audio files.
