@@ -59,7 +59,8 @@ https://github.com/DRCRecoveryData/wave-recovery-tool-gui/assets/85211068/c05302
 1. Install Homebrew as described on [brew.sh](https://brew.sh/).
 2. Run `brew install python3` in a terminal to install Python 3.
 3. Run `brew install pyqt@6` to install PyQt6.
-4. Proceed with step 5 above.
+4. Run `brew link --force --overwrite python3` to make the Homebrew-installed Python 3 the default Python on the system.
+5. Proceed with step 5 above.
 
 ## Step by Step Instructions for Command Line Usage
 
