@@ -37,6 +37,7 @@ from utils import print_error,\
     print_with_condition, error_with_condition, warning_with_condition,\
     print_separator
 from math import ceil
+from pathlib import Path
 
 __date__ = '2019-03-25'
 __updated__ = '2023-05-24'
@@ -539,6 +540,7 @@ class WaveHeaderProcessor():
         print_separator()
         num_repaired_audio_files = 0
         for current_dir, subdirs, files in os.walk(source_path):
+            relative_path = os.path.relpath(current_dir, source_path)
             for file in files:
                 full_path = os.path.join(current_dir, file)
                 is_wave_file = self.is_wave_file(full_path)
@@ -557,7 +559,12 @@ class WaveHeaderProcessor():
                             print("Skipping file {} because no errors were found.".format(full_path))
                         
                     if force or found_error:
-                        full_destination_path = os.path.join(destination_path, self.get_destination_file_name(file))
+                        # duplicate the folder structure from the source folder
+                        destination_folder = os.path.join(destination_path, relative_path)
+                        # create destination (sub)folders if needed
+                        Path(destination_folder).mkdir(parents=True, exist_ok=True)
+                        
+                        full_destination_path = os.path.join(destination_folder, self.get_destination_file_name(file))
                         
                         if os.path.exists(full_destination_path):
                             if not self.ask_user_to_overwrite_destination_file(full_destination_path):
